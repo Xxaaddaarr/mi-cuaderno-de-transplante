@@ -8,3 +8,4 @@ dist/
 # datos de pacientes: nunca en el repositorio
 data/
 *.seed.json
+web/node_modules/

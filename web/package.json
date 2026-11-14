@@ -1,0 +1,7 @@
+{
+  "name": "mi-cuaderno-tx-web",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": { "@supabase/supabase-js": "2.119.0" }
+}
