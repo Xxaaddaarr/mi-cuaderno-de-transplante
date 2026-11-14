@@ -24,7 +24,20 @@
       ]
     },
     "plugins": [
-      ["expo-notifications", { "icon": "./assets/notification-icon.png", "color": "#2443B0", "enableBackgroundRemoteNotifications": false }]
-    ]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2443B0",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "49c1e513-de46-4348-91d6-144d9f4419b6"
+      }
+    },
+    "owner": "xxaaddaarr"
   }
 }
