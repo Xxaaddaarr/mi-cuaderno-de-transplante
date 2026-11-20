@@ -1,15 +1,18 @@
 // Mi Cuaderno Tx · app de Android
 // Muestra la misma página web (incluida en la app para que funcione sin internet) y le suma
-// alarmas nativas: la página manda la lista de tomas próximas y la app las programa como
-// alarmas de reloj (setAlarmClock), que Android no retrasa por ahorro de batería.
+// alarmas nativas: la página manda la lista de tomas próximas y la app las programa.
+// Las tomas suenan como despertador (módulo nativo mct-alarm: volumen de alarma, pantalla
+// completa, aunque el celular esté en silencio). Los avisos (ventana, dosaje) van como
+// notificaciones normales.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Platform, StyleSheet, useColorScheme } from 'react-native';
+import { AppState, BackHandler, Linking, Platform, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView } from 'react-native-webview';
 import * as Notifications from 'expo-notifications';
 import * as Updates from 'expo-updates';
 import webapp from './src/webapp';
+import MctAlarm from './modules/mct-alarm/src/MctAlarmModule';
 
 const SITE = 'https://xxaaddaarr.github.io/mi-cuaderno-de-transplante/';
 const CH_DOSES = 'tomas-v1';
@@ -59,8 +62,16 @@ function applySchedule(items) {
     .then(async () => {
       await Notifications.cancelAllScheduledNotificationsAsync();
       const now = Date.now();
-      for (const it of items) {
-        if (!it || !(it.at > now)) continue;
+      const future = items.filter((it) => it && it.at > now);
+      // Tomas: alarma nativa tipo despertador. Si el módulo no está, van como notificación.
+      if (MctAlarm) {
+        const doses = future
+          .filter((it) => !it.info)
+          .map((it) => ({ id: String(it.id), at: it.at, title: it.title, body: it.body, k: (it.data || {}).k || '', t: (it.data || {}).t || '' }));
+        MctAlarm.schedule(JSON.stringify(doses));
+      }
+      for (const it of future) {
+        if (MctAlarm && !it.info) continue;
         await Notifications.scheduleNotificationAsync({
           identifier: String(it.id).replace(/[^\w-]/g, '_'),
           content: {
@@ -86,6 +97,12 @@ function applySchedule(items) {
 }
 
 function testAlarm() {
+  if (MctAlarm) {
+    MctAlarm.scheduleOne(
+      JSON.stringify({ id: 'prueba', at: Date.now() + 5000, title: 'Prueba · Mi Cuaderno Tx', body: 'Así sonará la alarma de tus medicamentos.', k: '', t: '' })
+    );
+    return;
+  }
   Notifications.scheduleNotificationAsync({
     content: {
       title: 'Prueba · Mi Cuaderno Tx',
@@ -132,11 +149,33 @@ export default function App() {
     checkUpdate();
   }, []);
 
+  // Lo que se tocó en la pantalla de alarma (Tomé / Posponer) se registra al abrir la app.
+  const deliverRef = useRef(() => {});
+  const takeAlarmAction = useCallback(() => {
+    if (!MctAlarm) return;
+    try {
+      const raw = MctAlarm.takePendingAction();
+      if (!raw) return;
+      const a = JSON.parse(raw);
+      if (a.k && a.t) deliverRef.current({ action: a.action, k: a.k, t: a.t });
+    } catch (e) {
+      console.warn('alarm action', e);
+    }
+  }, []);
+  useEffect(() => {
+    takeAlarmAction();
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') takeAlarmAction();
+    });
+    return () => sub.remove();
+  }, [takeAlarmAction]);
+
   const deliver = useCallback((action) => {
     const js = `window.mctNativeAction && window.mctNativeAction(${JSON.stringify(action)}); true;`;
     if (loaded.current && web.current) web.current.injectJavaScript(js);
     else pending.current.push(js);
   }, []);
+  deliverRef.current = deliver;
 
   const onResponse = useCallback(
     (r) => {
@@ -187,7 +226,10 @@ export default function App() {
     }
     if (msg.type === 'schedule' && Array.isArray(msg.items)) applySchedule(msg.items);
     else if (msg.type === 'test') testAlarm();
-    else if (msg.type === 'settings') Linking.openSettings();
+    else if (msg.type === 'settings') {
+      if (MctAlarm && !MctAlarm.canFullScreen()) MctAlarm.openFullScreenSettings();
+      else Linking.openSettings();
+    } else if (msg.type === 'stopAlarm') MctAlarm?.stop();
     else if (msg.type === 'exit') BackHandler.exitApp();
     else if (msg.type === 'theme') setTheme({ bg: typeof msg.bg === 'string' ? msg.bg : null, dark: !!msg.dark });
   }, []);
