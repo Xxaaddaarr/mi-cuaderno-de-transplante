@@ -1116,11 +1116,13 @@ function planHTML(){
   </div>
   ${NATIVE?`<div class="card soft"><h2>Alarmas de este celular</h2>
     <ul class="ticks">
-      <li>Suena a la hora de cada toma, aunque el celular esté bloqueado.</li>
+      <li>Suena como despertador a la hora de cada toma: usa el volumen de alarma y suena aunque el celular esté en silencio o bloqueado.</li>
+      <li>La pantalla se prende con los botones Tomé y Posponer 15 min.</li>
       <li>Si no confirmas, te recuerda a los 10, 20, 30, 45 y 60 minutos.</li>
       <li>La noche antes del dosaje te recuerda no tomar tacrolimus antes de la muestra.</li>
     </ul>
-    <div class="row2"><button class="btn" data-act="n-test">Probar alarma</button><button class="btn" data-act="n-perm">Revisar permisos</button></div>
+    <div class="row2"><button class="btn" data-act="n-test">Probar alarma</button><button class="btn" data-act="n-perm">Permitir pantalla completa</button></div>
+    <p class="hint" style="color:var(--ink)">Si al probar no se prende la pantalla, toca "Permitir pantalla completa" y activa el permiso.</p>
   </div>`:`<div class="card soft"><h2>Avisos</h2><p class="hint" style="color:var(--ink)">En la versión web los avisos aparecen solo con la página abierta. Las alarmas que suenan con el celular bloqueado están en la app de Android.</p></div>`}
   ${appearanceHTML()}
   ${session?`<div class="sec"><h2>Cuenta</h2><p class="sub">${esc(session.user.email)}</p><button class="btn ghost" data-act="logout">Cerrar sesión</button></div>`:''}`;
@@ -1142,7 +1144,7 @@ function armed(b,label){
 }
 const showErr=(id,msg)=>{const el=document.getElementById(id);el.textContent=msg;el.hidden=false};
 const numIn=id=>{const el=document.getElementById(id);const raw=el?el.value.trim().replace(',','.'):'';if(!raw)return null;if(/^\d+\/\d+$/.test(raw)){const [a,b]=raw.split('/').map(Number);return b?a/b:NaN}const x=Number(raw);return Number.isFinite(x)?x:NaN};
-const setDose=(k,m,i,val)=>saveDay(k,d=>{d.doses=d.doses||{};const key=gidOf(m)+'#'+i;if(val)d.doses[key]=val;else delete d.doses[key]});
+const setDose=(k,m,i,val)=>{saveDay(k,d=>{d.doses=d.doses||{};const key=gidOf(m)+'#'+i;if(val)d.doses[key]=val;else delete d.doses[key]});if(val)nativePost({type:'stopAlarm'})};
 const defAmt=(m,k)=>{const tp=taperFor(m,k);return tp?(tp.mg!=null?{mg:tp.mg,n:tp.count||null}:{}):(m.qty!=null?{q:m.qty}:{})};
 function readAmt(m,k){
   if(m.taper){
@@ -1177,6 +1179,7 @@ document.addEventListener('click',e=>{
     case 'take-group':{
       const at=nowHHMM(), tk=todayKey(), todo=slotsFor(tk).filter(s=>s.time===t&&!isDone(s.st.k));
       saveDay(tk,d=>{d.doses=d.doses||{};todo.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'taken',at,...defAmt(s.med,tk)}})});
+      nativePost({type:'stopAlarm'});
       toast(`${todo.length} medicamento${todo.length>1?'s':''} de las ${t} registrado${todo.length>1?'s':''}`);break;
     }
     case 'jump':document.getElementById('g-'+t.replace(':',''))?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});break;
