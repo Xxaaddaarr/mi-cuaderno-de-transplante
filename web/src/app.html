@@ -26,6 +26,21 @@
   --accent:#8BA3FF;--accent-ink:#0A1019;--accent-soft:#1A2648;
   --ok:#52C99C;--ok-soft:#0F3429;--warn:#F0B25A;--warn-soft:#38270F;--bad:#FF8476;--bad-soft:#421918;--on-bad:#1A0706;
   --am:#F0B23E;--pm:#4CC3BB;--nt:#A096FF;--scrim:rgb(0 0 0 / .6);color-scheme:dark}
+/* Colores del tema: claro por defecto, oscuro con más especificidad */
+:root[data-accent="gris"]{--accent:#475467;--accent-soft:#E6E9EE}
+:root[data-accent="rosa"]{--accent:#B4236E;--accent-soft:#FBE4EF}
+:root[data-accent="verde"]{--accent:#0B7A68;--accent-soft:#DCF2EC}
+:root[data-accent="violeta"]{--accent:#6B3FC9;--accent-soft:#ECE5FB}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"])[data-accent="gris"]{--accent:#B4BCC8;--accent-soft:#252C37}
+  :root:not([data-theme="light"])[data-accent="rosa"]{--accent:#FF8CC2;--accent-soft:#43162F}
+  :root:not([data-theme="light"])[data-accent="verde"]{--accent:#5FD4BC;--accent-soft:#0F332D}
+  :root:not([data-theme="light"])[data-accent="violeta"]{--accent:#B79CFF;--accent-soft:#2A1C4D}
+}
+:root[data-theme="dark"][data-accent="gris"]{--accent:#B4BCC8;--accent-soft:#252C37}
+:root[data-theme="dark"][data-accent="rosa"]{--accent:#FF8CC2;--accent-soft:#43162F}
+:root[data-theme="dark"][data-accent="verde"]{--accent:#5FD4BC;--accent-soft:#0F332D}
+:root[data-theme="dark"][data-accent="violeta"]{--accent:#B79CFF;--accent-soft:#2A1C4D}
 *{box-sizing:border-box}
 html,body{background:var(--bg)}
 body{color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
@@ -108,6 +123,18 @@ b{font-weight:700}
 .chip.neutral{background:var(--surface-2);color:var(--muted)}
 .pulse{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
+.wcard{border-color:var(--accent)}
+.wbar{position:relative;height:14px;border-radius:7px;background:var(--surface-2);margin:6px 0 2px}
+.wbar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:7px;background:var(--accent)}
+.wbar .mk{position:absolute;top:-5px;bottom:-5px;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ink)}
+.wbar .mk.soon{background:var(--warn)}
+.wlab{display:flex;justify-content:space-between;font-size:13px;font-weight:600}
+.wlab span{display:grid;gap:1px}.wlab span:nth-child(2){text-align:center}.wlab span:last-child{text-align:right}
+.wlab small{font-family:var(--f-body);font-size:11px;font-weight:600;color:var(--muted)}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{appearance:none;display:inline-flex;align-items:center;gap:8px;padding:8px 12px 8px 9px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.sw i{width:18px;height:18px;border-radius:50%;background:var(--sw)}
+.sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .offday{display:grid;gap:4px;padding:12px 14px;border:1px dashed var(--line);border-radius:12px;font-size:13.5px}
 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px}
@@ -449,8 +476,8 @@ let sb=null, session=null, patientId=null, patientName='', role='patient', team=
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const CK=()=>'mct-cache-'+patientId, OBK=()=>'mct-outbox-'+patientId;
 const cacheSave=()=>{if(patientId&&!DEMO)LS.set(CK(),{plan:S.plan,days:S.days,at:Date.now()})};
-const toV=r=>({id:r.id,gid:r.gid,name:r.name,strength:r.strength,unit:r.unit,qty:r.qty==null?null:Number(r.qty),type:r.type,times:r.times,freq:r.freq,note:r.note,strict:r.strict,taper:r.taper,from:r.from_date,...(r.until_date?{until:r.until_date}:{})});
-const fromV=(v,pid)=>({patient_id:pid,id:v.id,gid:gidOf(v),name:v.name,strength:v.strength||'',unit:v.unit||'tableta',qty:v.qty??null,type:v.type||'Otro',times:v.times,freq:v.freq||{t:'d'},note:v.note||'',strict:!!v.strict,taper:v.taper||null,from_date:v.from,until_date:v.until||null});
+const toV=r=>({id:r.id,gid:r.gid,name:r.name,strength:r.strength,unit:r.unit,qty:r.qty==null?null:Number(r.qty),type:r.type,times:r.times,freq:r.freq,note:r.note,strict:r.strict,taper:r.taper,win:r.win||null,from:r.from_date,...(r.until_date?{until:r.until_date}:{})});
+const fromV=(v,pid)=>({patient_id:pid,id:v.id,gid:gidOf(v),name:v.name,strength:v.strength||'',unit:v.unit||'tableta',qty:v.qty??null,type:v.type||'Otro',times:v.times,freq:v.freq||{t:'d'},note:v.note||'',strict:!!v.strict,taper:v.taper||null,win:v.win||null,from_date:v.from,until_date:v.until||null});
 async function fetchAll(q){const out=[];for(let f=0;;f+=1000){const {data,error}=await q().range(f,f+999);if(error)throw error;out.push(...data);if(data.length<1000)break}return out}
 async function loadPatient(pid){
   const since=dkey(addDays(today0(),-90));
@@ -537,6 +564,62 @@ async function loadTeam(){
   }catch(e){}
 }
 
+/* ---------- ventana sin comida ni otras pastillas (p. ej. tacrolimus) ---------- */
+function windowsFor(k){
+  const out=[];
+  medsOn(k).forEach(m=>{
+    if(!m.win||!scheduledOn(m,k))return;
+    m.times.forEach((t,i)=>{
+      const r=rec(k,m,i), s=toMin(t), took=r&&r.s==='taken'&&r.at?toMin(r.at):null;
+      out.push({med:m,i,time:t,start:s-(m.win.before||0),take:s,took,after:m.win.after||0,end:(took!=null?Math.max(took,s):s)+(m.win.after||0),skip:!!(r&&r.s==='skip')});
+    });
+  });
+  return out;
+}
+function windowConflicts(k){
+  const out=[];
+  windowsFor(k).forEach(w=>slotsFor(k).forEach(s=>{if(gidOf(s.med)===gidOf(w.med))return;const t=toMin(s.time);if(t>w.start&&t<w.take+w.after)out.push({w,s})}));
+  return out;
+}
+const winLabel=m=>m.win?`Ventana: ${m.win.before||0} min antes y ${m.win.after||0} min después, sin comida ni otras pastillas`:'';
+function windowCard(k){
+  const n=nowMin();
+  const w=windowsFor(k).find(w=>!w.skip&&n>=w.start-30&&(w.took==null?n<w.take+120:n<w.end));
+  if(!w)return '';
+  const name=esc(w.med.name), taken=w.took!=null;
+  const end=taken?w.end:(n>w.take?n+w.after:w.end), span=Math.max(1,end-w.start);
+  const pos=x=>Math.min(100,Math.max(0,(x-w.start)/span*100)).toFixed(1);
+  let chip,msg;
+  if(taken){chip=`<span class="chip ok">Faltan ${fmtDur(Math.max(0,end-n))}</span>`;msg=`Tomaste el ${name} a las <b class="num">${fromMin(w.took)}</b>. Puedes comer y tomar lo demás desde las <b class="num">${fromMin(end)}</b>.`}
+  else if(n<w.start){chip=`<span class="chip neutral">En ${fmtDur(w.start-n)}</span>`;msg=`Empieza a las <b class="num">${fromMin(w.start)}</b>. Desde esa hora no comas ni tomes otras pastillas.`}
+  else if(n<w.take){chip=`<span class="chip due"><i class="pulse"></i>Ventana abierta</span>`;msg=`No comas ni tomes otras pastillas. ${name} a las <b class="num">${w.time}</b>, en ${fmtDur(w.take-n)}.`}
+  else{chip=`<span class="chip bad">Tómalo ya</span>`;msg=`Toma tu ${name} ahora. La ventana termina ${w.after} min después de tomarlo.`}
+  return `<section class="card wcard" aria-label="Ventana del ${name}">
+    <div class="sec-h"><h2>Ventana del ${name}</h2>${chip}</div>
+    <p>${msg}</p>
+    <div class="wbar" role="img" aria-label="De ${fromMin(w.start)} a ${fromMin(end)}"><i class="fill" style="width:${pos(n)}%"></i><i class="mk soon" style="left:${pos(w.take-5)}%"></i><i class="mk" style="left:${pos(taken?w.took:w.take)}%"></i></div>
+    <div class="wlab num"><span>${fromMin(w.start)}<small>inicio</small></span><span>${taken?fromMin(w.took):w.time}<small>${taken?'tomado':'toma'}</small></span><span>${fromMin(end)}<small>fin</small></span></div>
+  </section>`;
+}
+
+/* ---------- apariencia: modo claro/oscuro y color ---------- */
+const ACCENTS=[['azul','Azul','#2443B0'],['gris','Gris','#475467'],['rosa','Rosa','#B4236E'],['verde','Verde','#0B7A68'],['violeta','Violeta','#6B3FC9']];
+const themePref=()=>LS.get('mct-theme')||{};
+function applyTheme(){
+  const t=themePref(), r=document.documentElement;
+  if(t.mode==='light'||t.mode==='dark')r.dataset.theme=t.mode;else delete r.dataset.theme;
+  if(t.accent&&t.accent!=='azul')r.dataset.accent=t.accent;else delete r.dataset.accent;
+  if(NATIVE){const dark=t.mode==='dark'||(t.mode!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);nativePost({type:'theme',bg:getComputedStyle(document.body).backgroundColor,dark})}
+}
+function appearanceHTML(){
+  const t=themePref();
+  return `<div class="sec"><h2>Apariencia</h2>
+    <div class="seg" role="group" aria-label="Modo">${[['auto','Automático'],['light','Claro'],['dark','Oscuro']].map(([v,l])=>`<button class="tog" data-act="theme-mode" data-v="${v}" aria-pressed="${(t.mode||'auto')===v}">${l}</button>`).join('')}</div>
+    <div class="swatches" role="group" aria-label="Color">${ACCENTS.map(([v,l,c])=>`<button class="sw" data-act="theme-accent" data-v="${v}" aria-pressed="${(t.accent||'azul')===v}" style="--sw:${c}"><i></i>${l}</button>`).join('')}</div>
+  </div>`;
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTheme());
+
 /* ---------- puente con la app de Android (alarmas nativas) ---------- */
 let schedHash='', pendingAction=null, afterT;
 const afterChange=()=>{cacheSave();clearTimeout(afterT);afterT=setTimeout(syncNative,80)};
@@ -551,6 +634,17 @@ function buildSchedule(){
       const body=list.map(s=>`${s.med.name}: ${doseText(s.med,k)}`).join('\n');
       [0,10,20,30,45,60].forEach((off,j)=>{const w=base.getTime()+off*60000;if(w>now)items.push({id:`${k}|${t}|${j}`,at:w,title:j?`Recuerda tus medicamentos de las ${t}`:`Es hora · ${t}`,body,data:{k,t}})});
     }
+  }
+  for(let d=0;d<3;d++){
+    const k=dkey(addDays(today0(),d)), base=parseKey(k).getTime();
+    windowsFor(k).forEach(w=>{
+      if(w.skip)return;
+      const at=m=>base+m*60000, nm=w.med.name, key=`${k}|${w.time}|win`;
+      if(w.took==null){
+        if(at(w.start)>now&&w.start<w.take)items.push({id:key+'0',at:at(w.start),title:`Empieza la ventana del ${nm}`,body:`Desde ahora no comas ni tomes otras pastillas. ${nm} a las ${w.time}; la ventana termina ${w.after} min después de tomarlo.`,data:{k,t:w.time},info:true});
+        if(at(w.take-5)>now)items.push({id:key+'5',at:at(w.take-5),title:`En 5 minutos: ${nm}`,body:`${nm}: ${doseText(w.med,k)} a las ${w.time}.`,data:{k,t:w.time},info:true});
+      }else if(at(w.end)>now)items.push({id:key+'end',at:at(w.end),title:`Ventana del ${nm} cerrada`,body:'Ya puedes comer y tomar tus otras pastillas.',data:{k,t:w.time},info:true});
+    });
   }
   if(S.plan&&S.plan.labDate){
     const w=addDays(parseKey(S.plan.labDate),-1);w.setHours(20,30,0,0);const tm=tacroMed();
@@ -580,7 +674,7 @@ const nativePost=m=>{try{window.ReactNativeWebView.postMessage(JSON.stringify(m)
 function demoState(){
   const t0=today0(), k0=dkey(addDays(t0,-10));
   const meds=[
-    {id:'tacro',name:'Tacrolimus',strength:'1 mg',unit:'cápsula',qty:4,type:'Inmunosupresor',times:['08:00','20:00'],freq:{t:'d'},note:'Cada 12 h exactas',strict:true,taper:null,from:k0},
+    {id:'tacro',name:'Tacrolimus',strength:'1 mg',unit:'cápsula',qty:4,type:'Inmunosupresor',times:['08:00','20:00'],freq:{t:'d'},note:'Cada 12 h exactas',strict:true,taper:null,win:{before:60,after:60},from:k0},
     {id:'myco',name:'Micofenolato',strength:'500 mg',unit:'tableta',qty:2,type:'Inmunosupresor',times:['10:00','22:00'],freq:{t:'d'},note:'Cada 12 h',strict:true,taper:null,from:k0},
     {id:'pred',name:'Prednisona',strength:'',unit:'tableta',qty:null,type:'Corticoide',times:['09:00'],freq:{t:'d'},note:'Con el desayuno',strict:false,taper:{date:dkey(t0),mg:20,n:2,step:5,every:5,min:null},from:k0}];
   const days={};
@@ -696,7 +790,7 @@ function viewHoy(){
       const qd=rr&&rr.s==='taken'&&rr.q!=null&&rr.q!==m.qty?`Tomaste ${fmtQty(rr.q)} ${unitWord(m.unit,rr.q)}`:'';
       return `<div class="med">
         <button class="check ${cls}" data-act="take" data-med="${gidOf(m)}" data-i="${s.i}" data-k="${k}"${canWrite?'':' disabled'} aria-label="${esc(m.name)} de las ${t}: ${isDone(st.k)?'ver registro':'marcar como tomada'}">${st.k==='skip'?I.x:I.check}</button>
-        <button class="med-body" data-act="open" data-med="${gidOf(m)}" data-i="${s.i}" data-k="${k}"><span class="med-name">${esc(m.name)}</span><span class="med-dose">${esc(doseText(m,k))}</span>${m.note?`<span class="med-note">${esc(m.note)}</span>`:''}${tn?`<span class="taper">${esc(tn)}</span>`:''}${qd?`<span class="taper">${esc(qd)}</span>`:''}${labDay?'<span class="taper">Hoy: tomar después de la muestra</span>':m.strict?'<span class="strict">Horario estricto</span>':''}</button>
+        <button class="med-body" data-act="open" data-med="${gidOf(m)}" data-i="${s.i}" data-k="${k}"><span class="med-name">${esc(m.name)}</span><span class="med-dose">${esc(doseText(m,k))}</span>${m.note?`<span class="med-note">${esc(m.note)}</span>`:''}${tn?`<span class="taper">${esc(tn)}</span>`:''}${qd?`<span class="taper">${esc(qd)}</span>`:''}${labDay?'<span class="taper">Hoy: tomar después de la muestra</span>':m.strict?`<span class="strict">Horario estricto${m.win?' · sin comida ni pastillas '+(m.win.before||0)+' min antes y '+(m.win.after||0)+' min después':''}</span>`:''}</button>
         ${chipFor(st)}
       </div>`;
     }).join('');
@@ -705,7 +799,9 @@ function viewHoy(){
   const tmw=dkey(addDays(today0(),1)), up=changeLog().filter(c=>c.k===tmw||c.k===k);
   const upNote=up.length?`<div class="note info">${I.pill}<div><b>Cambios en tu tratamiento</b>${up.map(c=>`<br>${c.k===k?'Desde hoy':'Desde mañana'}: ${esc(c.text)}`).join('')}</div></div>`:'';
   const off=medsOn(k).filter(m=>!scheduledOn(m,k)).map(m=>{const nx=nextOn(m,k);return `<span><b>${esc(m.name)}</b> · ${esc(freqLabel(m).toLowerCase())}${nx?` · toca ${nx.i===1?'mañana':'el '+fmtKey(nx.kk)}`:''}</span>`});
-  return `${hero}${labNote}${upNote}${progress}<div class="stack">${groups}</div>${off.length?`<div class="offday"><span class="lab">Hoy no toca</span>${off.join('')}</div>`:''}<p class="hint">Toca el círculo para marcar una toma a la hora actual. Toca el nombre para registrar otra hora, posponer o anotar que no la tomaste.</p>`;
+  const wc=windowConflicts(k);
+  const wcNote=wc.length?`<div class="note">${I.alert}<div><b>Hay pastillas dentro de la ventana del ${esc(wc[0].w.med.name)}.</b> ${wc.map(c=>`${esc(c.s.med.name)} a las <span class="num">${c.s.time}</span>`).join(', ')} cae entre las <span class="num">${fromMin(wc[0].w.start)}</span> y las <span class="num">${fromMin(wc[0].w.take+wc[0].w.after)}</span>. Consulta con tu equipo si debes cambiar la hora.</div></div>`:'';
+  return `${hero}${windowCard(k)}${wcNote}${labNote}${upNote}${progress}<div class="stack">${groups}</div>${off.length?`<div class="offday"><span class="lab">Hoy no toca</span>${off.join('')}</div>`:''}<p class="hint">Toca el círculo para marcar una toma a la hora actual. Toca el nombre para registrar otra hora, posponer o anotar que no la tomaste.</p>`;
 }
 
 const FIELDS=[['pas','Presión alta','mmHg','120','numeric',60,260],['pad','Presión baja','mmHg','80','numeric',30,160],['temp','Temperatura','°C','36.5','decimal',34,43],['peso','Peso','kg','73.0','decimal',25,250],['diu','Diuresis 24 h','mL','2500','numeric',0,12000]];
@@ -961,6 +1057,11 @@ function planHTML(){
         <div class="field full"><label for="m-note">Indicación</label><input id="m-note" value="${esc(m.note)}" placeholder="Ej. Con el desayuno" autocomplete="off"></div>
         <div class="field full"><label for="m-eff">${planEdit==='new'?'Empieza el':'¿Desde cuándo aplica el cambio?'}</label><input type="date" id="m-eff" value="${todayKey()}">${planEdit==='new'?'':'<span class="hint">Si cambia la dosis, el horario o la frecuencia, los días anteriores se quedan con lo de antes. Puedes poner una fecha futura.</span>'}</div>
         <label class="checkrow"><input type="checkbox" id="m-strict"${m.strict?' checked':''}> Horario estricto (inmunosupresores)</label>
+        <label class="checkrow"><input type="checkbox" id="m-win"${m.win?' checked':''}> Ventana sin comida ni otras pastillas</label>
+        <div class="fgrid full" id="f-win"${m.win?'':' hidden'}>
+          <div class="field"><label for="m-wb">Minutos antes</label><input id="m-wb" inputmode="numeric" value="${m.win?m.win.before:60}"></div>
+          <div class="field"><label for="m-wa">Minutos después</label><input id="m-wa" inputmode="numeric" value="${m.win?m.win.after:60}"></div>
+        </div>
         <label class="checkrow"><input type="checkbox" id="m-tp"${tp?' checked':''}> Dosis en descenso</label>
         <div class="fgrid full" id="f-tp"${tp?'':' hidden'}>
           <div class="field"><label for="tp-mg">Dosis ese día (mg)</label><input id="tp-mg" inputmode="decimal" value="${curTp?curTp.mg:''}"></div>
@@ -990,7 +1091,7 @@ function planHTML(){
         const m=versionOn(g,k), f=fut.filter(v=>gidOf(v)===g).sort(byFrom);
         if(!m&&!f.length)return '';
         const show=m||f[0];
-        return `<div class="pitem"><div style="min-width:0"><b>${esc(show.name)}</b> <span class="med-dose">${esc(doseText(show,m?k:show.from))}</span><div class="ptimes num">${show.times.join(' · ')}</div><div class="med-note">${m?'':`Empieza el ${fmtKey(show.from)} · `}${esc(freqLabel(show))}${show.taper&&m?' · '+esc(taperNote(show,k)):''}</div>${f.filter(v=>v!==show).map(v=>`<div class="taper">Desde el ${fmtKey(v.from)}: ${esc(doseText(v,v.from))} · ${v.times.join(', ')}</div>`).join('')}${m&&m.until&&!f.length?`<div class="taper">Se suspende después del ${fmtKey(m.until)}</div>`:''}</div><button class="btn small" data-act="p-edit" data-id="${g}">Editar</button></div>`;
+        return `<div class="pitem"><div style="min-width:0"><b>${esc(show.name)}</b> <span class="med-dose">${esc(doseText(show,m?k:show.from))}</span><div class="ptimes num">${show.times.join(' · ')}</div><div class="med-note">${m?'':`Empieza el ${fmtKey(show.from)} · `}${esc(freqLabel(show))}${show.taper&&m?' · '+esc(taperNote(show,k)):''}</div>${show.win?`<div class="med-note">${esc(winLabel(show))}</div>`:''}${f.filter(v=>v!==show).map(v=>`<div class="taper">Desde el ${fmtKey(v.from)}: ${esc(doseText(v,v.from))} · ${v.times.join(', ')}</div>`).join('')}${m&&m.until&&!f.length?`<div class="taper">Se suspende después del ${fmtKey(m.until)}</div>`:''}</div><button class="btn small" data-act="p-edit" data-id="${g}">Editar</button></div>`;
       }).join('');
       const stopped=gids().filter(g=>!versionOn(g,k)&&!fut.some(v=>gidOf(v)===g)).map(latestV);
       return (items?`<div class="plist">${items}</div>`:'<p class="empty-s">Sin medicamentos activos.</p>')+(stopped.length?`<p class="med-note">Suspendidos: ${stopped.map(v=>`${esc(v.name)} (hasta el ${v.until?fmtShort(v.until):'—'})`).join(' · ')}</p>`:'');
@@ -1005,6 +1106,7 @@ function planHTML(){
     </ul>
     <div class="row2"><button class="btn" data-act="n-test">Probar alarma</button><button class="btn" data-act="n-perm">Revisar permisos</button></div>
   </div>`:`<div class="card soft"><h2>Avisos</h2><p class="hint" style="color:var(--ink)">En la versión web los avisos aparecen solo con la página abierta. Las alarmas que suenan con el celular bloqueado están en la app de Android.</p></div>`}
+  ${appearanceHTML()}
   ${session?`<div class="sec"><h2>Cuenta</h2><p class="sub">${esc(session.user.email)}</p><button class="btn ghost" data-act="logout">Cerrar sesión</button></div>`:''}`;
 }
 function openSheet(html){sheetIn.innerHTML=html;if(!sheet.open)sheet.showModal();sheet.scrollTop=0}
@@ -1092,7 +1194,7 @@ document.addEventListener('click',e=>{
     case 'retry':location.reload();break;
     case 'reload-pick':loadClinicianPatients();break;
     case 'pick':{const p=patients.find(x=>x.id===b.dataset.id);if(p){LS.set('mct-doc-pid',p.id);openPatient(p)}break}
-    case 'acct':openSheet(`<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">Cuenta</div><h3 id="sheet-title">${esc(session&&session.user.email||'')}</h3></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div>${patients.length>1?`<button class="btn" data-act="switch">Cambiar de paciente</button>`:''}<button class="btn ghost" data-act="logout">Cerrar sesión</button>`);break;
+    case 'acct':openSheet(`<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">Cuenta</div><h3 id="sheet-title">${esc(session&&session.user.email||'')}</h3></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div>${appearanceHTML()}${patients.length>1?`<button class="btn" data-act="switch">Cambiar de paciente</button>`:''}<button class="btn ghost" data-act="logout">Cerrar sesión</button>`);break;
     case 'switch':sheet.close();LS.del('mct-doc-pid');patientId=null;patientName='';S={plan:null,days:{}};phase='pick';render();break;
     case 'logout':
       if(outbox.length&&!armed(b,`Hay ${outbox.length} cambios sin subir. Toca otra vez para salir igual`))break;
@@ -1100,6 +1202,11 @@ document.addEventListener('click',e=>{
       sb.auth.signOut().finally(()=>{LS.del('mct-last');location.hash='';location.reload()});
       break;
     case 'team-del':if(armed(b,'¿Quitar?')){sb.from('care_team').delete().match({patient_id:patientId,clinician_id:b.dataset.id}).then(({error})=>{if(error)toast('No se pudo quitar el acceso. Revisa tu conexión.');else{toast('Acceso quitado');loadTeam()}})}break;
+    case 'theme-mode':case 'theme-accent':{
+      const t=themePref();if(a==='theme-mode')t.mode=b.dataset.v;else t.accent=b.dataset.v;LS.set('mct-theme',t);applyTheme();
+      b.parentElement.querySelectorAll('[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+      break;
+    }
     case 'n-test':nativePost({type:'test'});toast('En unos segundos debería sonar una alarma de prueba');break;
     case 'n-perm':nativePost({type:'settings'});break;
     case 'p-new':planEdit='new';refreshPlan();break;
@@ -1124,6 +1231,7 @@ document.addEventListener('change',e=>{
   if(id==='p-lab')savePlan(p=>{p.labDate=e.target.value});
   if(id==='p-labt')savePlan(p=>{p.labTentative=e.target.checked});
   if(id==='m-freq'){document.getElementById('f-alt').hidden=e.target.value!=='alt';document.getElementById('f-w').hidden=e.target.value!=='w'}
+  if(id==='m-win')document.getElementById('f-win').hidden=!e.target.checked;
   if(id==='m-tp'){document.getElementById('f-tp').hidden=!e.target.checked;document.getElementById('f-qty').hidden=e.target.checked}
 });
 document.addEventListener('submit',e=>{
@@ -1210,7 +1318,7 @@ document.addEventListener('submit',e=>{
       if(n>every)return showErr('m-err',`La dosis n° no puede ser mayor que ${every}.`);
       taper={date:todayKey(),mg,n:Math.round(n),step,every:Math.round(every),min:min==null||Number.isNaN(min)?null:min};
     }
-    const data={name,strength:document.getElementById('m-str').value.trim(),unit:document.getElementById('m-unit').value,qty:useTp?null:qty,type:document.getElementById('m-type').value,times:[...new Set(times.map(x=>fromMin(toMin(x))))].sort((a,b)=>toMin(a)-toMin(b)),freq,note:document.getElementById('m-note').value.trim(),strict:document.getElementById('m-strict').checked,taper};
+    const data={name,strength:document.getElementById('m-str').value.trim(),unit:document.getElementById('m-unit').value,qty:useTp?null:qty,type:document.getElementById('m-type').value,times:[...new Set(times.map(x=>fromMin(toMin(x))))].sort((a,b)=>toMin(a)-toMin(b)),freq,note:document.getElementById('m-note').value.trim(),strict:document.getElementById('m-strict').checked,taper,win:document.getElementById('m-win').checked?{before:Math.max(0,Math.round(numIn('m-wb')||0)),after:Math.max(0,Math.round(numIn('m-wa')||0))}:null};
     const editing=planEdit, eff=document.getElementById('m-eff').value||todayKey();
     if(data.taper)data.taper.date=eff;
     savePlan(p=>{if(editing==='new'){const g='m'+Date.now().toString(36);p.meds.push({id:g,gid:g,from:eff,...data})}else applyChange(p.meds,editing,eff,data)});
@@ -1252,6 +1360,7 @@ async function loadClinicianPatients(){
 }
 function openPatient(p){patientId=p.id;patientName=p.name;outbox=[];const c=LS.get(CK());S=c?{plan:c.plan,days:c.days||{}}:{plan:null,days:{}};phase=c?'ready':'loading';render();refresh()}
 async function boot(){
+  applyTheme();
   if(DEMO){S=demoState();canWrite=true;phase='ready';render();return}
   if(!window.supabase||!CFG.url){phase='error';render();return}
   sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'mct-auth'}});

@@ -2,12 +2,13 @@
 // Muestra la misma página web (incluida en la app para que funcione sin internet) y le suma
 // alarmas nativas: la página manda la lista de tomas próximas y la app las programa como
 // alarmas de reloj (setAlarmClock), que Android no retrasa por ahorro de batería.
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Platform, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView } from 'react-native-webview';
 import * as Notifications from 'expo-notifications';
+import * as Updates from 'expo-updates';
 import webapp from './src/webapp';
 
 const SITE = 'https://xxaaddaarr.github.io/mi-cuaderno-de-transplante/';
@@ -69,6 +70,8 @@ function applySchedule(items) {
             categoryIdentifier: it.info ? undefined : CATEGORY,
             sound: 'default',
             priority: Notifications.AndroidNotificationPriority.MAX,
+            // La alarma de la toma no se puede deslizar: se queda hasta tocar Tomé o Posponer.
+            sticky: !it.info,
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -91,6 +94,7 @@ function testAlarm() {
       categoryIdentifier: CATEGORY,
       sound: 'default',
       priority: Notifications.AndroidNotificationPriority.MAX,
+      sticky: true,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -101,13 +105,32 @@ function testAlarm() {
   }).catch((e) => console.warn('test', e));
 }
 
+// Si hay una versión nueva de la app publicada, la baja y reinicia sola.
+async function checkUpdate() {
+  if (__DEV__ || !Updates.isEnabled) return;
+  try {
+    const r = await Updates.checkForUpdateAsync();
+    if (!r.isAvailable) return;
+    await Updates.fetchUpdateAsync();
+    await Updates.reloadAsync();
+  } catch (e) {
+    console.warn('update', e);
+  }
+}
+
 export default function App() {
   const web = useRef(null);
   const loaded = useRef(false);
   const pending = useRef([]);
   const handled = useRef(new Set());
   const scheme = useColorScheme();
-  const bg = scheme === 'dark' ? '#0A1019' : '#F1F4F8';
+  const [theme, setTheme] = useState(null);
+  const dark = theme ? theme.dark : scheme === 'dark';
+  const bg = (theme && theme.bg) || (dark ? '#0A1019' : '#F1F4F8');
+
+  useEffect(() => {
+    checkUpdate();
+  }, []);
 
   const deliver = useCallback((action) => {
     const js = `window.mctNativeAction && window.mctNativeAction(${JSON.stringify(action)}); true;`;
@@ -166,6 +189,7 @@ export default function App() {
     else if (msg.type === 'test') testAlarm();
     else if (msg.type === 'settings') Linking.openSettings();
     else if (msg.type === 'exit') BackHandler.exitApp();
+    else if (msg.type === 'theme') setTheme({ bg: typeof msg.bg === 'string' ? msg.bg : null, dark: !!msg.dark });
   }, []);
 
   const onLoadEnd = useCallback(() => {
@@ -186,7 +210,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={[styles.root, { backgroundColor: bg }]} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+        <StatusBar style={dark ? 'light' : 'dark'} />
         <WebView
           ref={web}
           source={{ html: webapp, baseUrl: SITE }}
