@@ -5,7 +5,7 @@
 // completa, aunque el celular esté en silencio). Los avisos (ventana, dosaje) van como
 // notificaciones normales.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, BackHandler, Linking, Platform, StyleSheet, useColorScheme } from 'react-native';
+import { AppState, BackHandler, Linking, PermissionsAndroid, Platform, StyleSheet, useColorScheme } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { WebView } from 'react-native-webview';
@@ -230,6 +230,16 @@ export default function App() {
       if (MctAlarm && !MctAlarm.canFullScreen()) MctAlarm.openFullScreenSettings();
       else Linking.openSettings();
     } else if (msg.type === 'stopAlarm') MctAlarm?.stop();
+    else if (msg.type === 'camera') {
+      // Permiso de cámara para la verificación de tomas (foto o video en vivo).
+      const reply = (ok) =>
+        web.current?.injectJavaScript(`window.mctCameraPermission && window.mctCameraPermission(${ok ? 'true' : 'false'}); true;`);
+      if (Platform.OS !== 'android') reply(true);
+      else
+        PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA)
+          .then((r) => reply(r === PermissionsAndroid.RESULTS.GRANTED))
+          .catch(() => reply(false));
+    }
     else if (msg.type === 'exit') BackHandler.exitApp();
     else if (msg.type === 'theme') setTheme({ bg: typeof msg.bg === 'string' ? msg.bg : null, dark: !!msg.dark });
   }, []);
@@ -266,6 +276,9 @@ export default function App() {
           style={{ backgroundColor: bg }}
           overScrollMode="never"
           textZoom={100}
+          mediaCapturePermissionGrantType="grant"
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
         />
       </SafeAreaView>
     </SafeAreaProvider>
