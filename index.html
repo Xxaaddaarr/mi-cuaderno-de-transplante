@@ -266,6 +266,26 @@ dialog.sheet::backdrop{background:var(--scrim)}
 .ptimes{font-size:13px;margin-top:2px}
 .ticks{margin:0;padding-left:18px;display:grid;gap:6px;font-size:14px}
 
+dialog.cam{border:0;padding:0;margin:0;width:100%;max-width:none;height:100%;max-height:none;background:#05080D;color:#fff}
+dialog.cam::backdrop{background:#05080D}
+.cam-in{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding-block:calc(14px + env(safe-area-inset-top,0px)) calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:560px;margin:0 auto}
+.cam-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.cam-stage{position:relative;border-radius:22px;overflow:hidden;background:#111827;min-height:0}
+.cam-view{width:100%;height:100%;object-fit:cover;display:block}
+.cam-view.mirror{transform:scaleX(-1)}
+.cam-view.fit{object-fit:contain;background:#000}
+.cam-count{position:absolute;inset:0;display:grid;place-items:center;font:700 96px var(--f-data);color:#fff;text-shadow:0 4px 24px rgb(0 0 0 / .6)}
+.cam-msg{padding:24px;font-size:16px;line-height:1.5}
+.cam-foot{display:grid;gap:10px}
+.cam-tip{font-size:14px;text-align:center;color:#C9D2E3}
+.cam-ctrl{display:flex;justify-content:center}
+.shutter{appearance:none;width:78px;height:78px;border-radius:50%;border:4px solid #fff;background:transparent;display:grid;place-items:center;cursor:pointer;padding:0}
+.shutter i{width:60px;height:60px;border-radius:50%;background:#fff}
+.shutter.rec i{background:#FF4D4F}
+.shutter:disabled{opacity:.4}
+.cam-skip{color:#C9D2E3;border-color:transparent}
+.vbox img,.vbox video{width:100%;max-height:340px;object-fit:contain;border-radius:14px;background:#000;display:block}
+.dot.v{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--accent)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(82px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:20;width:max-content;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgb(0 0 0 / .2)}
 @media (max-width:360px){.kpis.k3{grid-template-columns:1fr 1fr}.kv{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
@@ -277,6 +297,7 @@ dialog.sheet::backdrop{background:var(--scrim)}
 </div>
 <nav class="tabs" aria-label="Secciones"><div class="tabs-inner" id="tabs"></div></nav>
 <dialog id="sheet" class="sheet" aria-labelledby="sheet-title"><div class="sheet-in" id="sheet-in"></div></dialog>
+<dialog id="cam" class="cam" aria-label="Verificar toma"><div class="cam-in" id="cam-in"></div></dialog>
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
@@ -506,9 +527,9 @@ async function loadPatient(pid){
     fetchAll(()=>sb.from('labs').select('*').eq('patient_id',pid).order('day'))]);
   if(pt.error)throw pt.error;
   const p=pt.data;
-  const plan={txDate:p&&p.tx_date||'',labDate:p&&p.lab_date||'',labTentative:!!(p&&p.lab_tentative),base:p&&p.base_date||'',meds:mv.map(toV)};
+  const plan={txDate:p&&p.tx_date||'',labDate:p&&p.lab_date||'',labTentative:!!(p&&p.lab_tentative),base:p&&p.base_date||'',verify:p&&p.verify||{mode:'off',scope:'strict'},meds:mv.map(toV)};
   const days={}, D=k=>(days[k]=days[k]||{});
-  ds.forEach(r=>{const d=D(r.day);d.doses=d.doses||{};const o={s:r.status};if(r.at)o.at=r.at;if(r.until)o.until=r.until;if(r.qty!=null)o.q=Number(r.qty);if(r.mg!=null)o.mg=Number(r.mg);if(r.n!=null)o.n=r.n;if(r.reason)o.reason=r.reason;if(r.nt)o.nt=true;d.doses[r.med_gid+'#'+r.idx]=o});
+  ds.forEach(r=>{const d=D(r.day);d.doses=d.doses||{};const o={s:r.status};if(r.at)o.at=r.at;if(r.until)o.until=r.until;if(r.qty!=null)o.q=Number(r.qty);if(r.mg!=null)o.mg=Number(r.mg);if(r.n!=null)o.n=r.n;if(r.reason)o.reason=r.reason;if(r.nt)o.nt=true;if(r.verif)o.verif=r.verif;d.doses[r.med_gid+'#'+r.idx]=o});
   dy.forEach(r=>{const d=D(r.day);if(r.peso!=null)d.peso=Number(r.peso);if(r.diu!=null)d.diu=r.diu;if(r.dren!=null)d.dren=r.dren;if(r.sint&&r.sint.length)d.sint=r.sint;if(r.nota)d.nota=r.nota});
   rd.forEach(r=>{const d=D(r.day);(d.ctrl=d.ctrl||[]).push({id:r.id,t:r.t,...(r.pas!=null?{pas:r.pas,pad:r.pad}:{}),...(r.temp!=null?{temp:Number(r.temp)}:{})})});
   lb.forEach(r=>{const o={};['tac','hb','urea','crea'].forEach(f=>{if(r[f]!=null)o[f]=Number(r[f])});if(Object.keys(o).length)D(r.day).labs=o});
@@ -520,7 +541,7 @@ function dayOps(k,d,prev,pid){
     const cut=key.lastIndexOf('#'), gid=key.slice(0,cut), idx=Number(key.slice(cut+1)), a=dd[key];
     if(!a){ops.push({t:'del',table:'doses',match:{patient_id:pid,day:k,med_gid:gid,idx}});continue}
     if(JSON.stringify(a)===JSON.stringify(pd[key]))continue;
-    ops.push({t:'up',table:'doses',row:{patient_id:pid,day:k,med_gid:gid,idx,status:a.s,at:a.at||null,until:a.until||null,qty:a.q??null,mg:a.mg??null,n:a.n??null,reason:a.reason||null,nt:!!a.nt}});
+    ops.push({t:'up',table:'doses',row:{patient_id:pid,day:k,med_gid:gid,idx,status:a.s,at:a.at||null,until:a.until||null,qty:a.q??null,mg:a.mg??null,n:a.n??null,reason:a.reason||null,nt:!!a.nt,verif:a.verif||null}});
   }
   const dayF=x=>JSON.stringify([x.peso??null,x.diu??null,x.dren??null,x.sint||[],x.nota||'']);
   if(dayF(d)!==dayF(prev))ops.push({t:'up',table:'days',row:{patient_id:pid,day:k,peso:d.peso??null,diu:d.diu??null,dren:d.dren??null,sint:d.sint||[],nota:d.nota||''}});
@@ -531,7 +552,7 @@ function dayOps(k,d,prev,pid){
   return ops;
 }
 function planOps(p,prev,pid){
-  const ops=[{t:'up',table:'patients',row:{id:pid,tx_date:p.txDate||null,lab_date:p.labDate||null,lab_tentative:!!p.labTentative,base_date:p.base||todayKey()}}];
+  const ops=[{t:'up',table:'patients',row:{id:pid,tx_date:p.txDate||null,lab_date:p.labDate||null,lab_tentative:!!p.labTentative,base_date:p.base||todayKey(),verify:p.verify||{mode:'off',scope:'strict'}}}];
   const pm=prev.meds||[];
   p.meds.forEach(v=>{const o=pm.find(x=>x.id===v.id);if(!o||JSON.stringify(o)!==JSON.stringify(v))ops.push({t:'up',table:'med_versions',row:fromV(v,pid)})});
   pm.forEach(o=>{if(!p.meds.some(v=>v.id===o.id))ops.push({t:'del',table:'med_versions',match:{patient_id:pid,id:o.id}})});
@@ -551,6 +572,7 @@ async function flush(){
     }
   }catch(e){}
   flushing=false;renderTop();
+  uploadPending();
 }
 window.addEventListener('online',()=>{flush();refresh()});
 setInterval(flush,30000);
@@ -680,11 +702,164 @@ window.mctNativeAction=function(a){
   const list=slotsFor(a.k).filter(s=>s.time===a.t&&!isDone(s.st.k));
   tab='hoy';
   if(!list.length){render();return}
-  if(a.action==='taken'){const at=nowHHMM();saveDay(a.k,d=>{d.doses=d.doses||{};list.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'taken',at,...defAmt(s.med,a.k)}})});toast(`Registrado a las ${at}: ${uniqNames(list)}`)}
+  if(a.action==='taken'){const at=nowHHMM();saveDay(a.k,d=>{d.doses=d.doses||{};list.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'taken',at,...defAmt(s.med,a.k)}})});toast(`Registrado a las ${at}: ${uniqNames(list)}`);startVerify(a.k,list)}
   else if(a.action==='snooze'){const until=fromMin(nowMin()+15);saveDay(a.k,d=>{d.doses=d.doses||{};list.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'snooze',until}})});toast(`Te recordamos a las ${until}`)}
   else render();
 };
 const nativePost=m=>{try{window.ReactNativeWebView.postMessage(JSON.stringify(m))}catch(e){}};
+
+/* ---------- verificación de tomas: versión A (foto) o B (video de 5 s), siempre en vivo ---------- */
+const verifyCfg=()=>(S.plan&&S.plan.verify)||{mode:'off',scope:'strict'};
+const needsVerify=m=>{const v=verifyCfg();return v.mode!=='off'&&(v.scope==='all'||!!m.strict)};
+const demoBlobs={};
+const idb=(()=>{
+  let dbp=null;
+  const open=()=>dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('mct',1);r.onupgradeneeded=()=>r.result.createObjectStore('up');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+  const run=(mode,fn)=>open().then(db=>new Promise((res,rej)=>{const t=db.transaction('up',mode);const q=fn(t.objectStore('up'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}));
+  return {
+    put:(k,v)=>run('readwrite',st=>st.put(v,k)),
+    get:k=>run('readonly',st=>st.get(k)),
+    del:k=>run('readwrite',st=>st.delete(k)),
+    all:()=>open().then(db=>new Promise((res,rej)=>{const out=[];const c=db.transaction('up').objectStore('up').openCursor();c.onsuccess=()=>{const x=c.result;if(x){out.push([x.key,x.value]);x.continue()}else res(out)};c.onerror=()=>rej(c.error)})),
+  };
+})();
+let uploading=false;
+async function uploadPending(){
+  if(uploading||!sb||!navigator.onLine)return;
+  uploading=true;
+  try{
+    for(const [path,v] of await idb.all()){
+      const {error}=await sb.storage.from('verificaciones').upload(path,v.blob,{contentType:v.type,upsert:false});
+      if(error&&!/exist|duplicate/i.test(error.message||''))break;
+      await idb.del(path);
+      if(v.k&&S.days[v.k])saveDay(v.k,d=>{Object.values(d.doses||{}).forEach(r=>{if(r.verif&&r.verif.path===path)r.verif.up=true})});
+    }
+  }catch(e){}
+  uploading=false;
+}
+window.addEventListener('online',()=>uploadPending());
+
+let cam=null;
+const camEl=()=>document.getElementById('cam'), camIn=()=>document.getElementById('cam-in');
+const pad2=n=>String(n).padStart(2,'0');
+const stampTxt=(names,d)=>`Mi Cuaderno Tx · ${names} · ${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+function askNativeCamera(){
+  if(!NATIVE)return Promise.resolve(true);
+  return new Promise(res=>{const t=setTimeout(()=>res(true),8000);window.mctCameraPermission=g=>{clearTimeout(t);res(!!g)};nativePost({type:'camera'})});
+}
+// Abre la cámara para verificar las tomas recién marcadas (list: [{med,i,time}] del día k).
+async function startVerify(k,list){
+  list=(list||[]).filter(s=>needsVerify(s.med));
+  if(!list.length||!canWrite)return;
+  if(cam)stopCam();
+  const mode=verifyCfg().mode;
+  cam={k,list,mode,names:[...new Set(list.map(s=>s.med.name))].join(', '),time:list[0].time,opened:Date.now(),stream:null,blob:null,url:null,state:'live'};
+  const el=camEl();if(!el.open)el.showModal();
+  renderCam();
+  if(!(await askNativeCamera())){cam.state='error';cam.err='La app no tiene permiso para usar la cámara. Actívalo en Ajustes → Aplicaciones → Mi Cuaderno Tx → Permisos.';return renderCam()}
+  try{
+    cam.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:720},height:{ideal:960}},audio:false});
+    renderCam();
+  }catch(e){cam.state='error';cam.err='No se pudo abrir la cámara. Revisa que la app tenga permiso de cámara.';renderCam()}
+}
+function stopCam(){
+  if(!cam)return;
+  clearInterval(cam.tick);cancelAnimationFrame(cam.raf);
+  if(cam.rec&&cam.rec.state!=='inactive')try{cam.rec.stop()}catch(e){}
+  if(cam.stream)cam.stream.getTracks().forEach(t=>t.stop());
+  cam=null;
+  const el=camEl();if(el.open)el.close();
+}
+function renderCam(){
+  if(!cam)return;
+  const A=cam.mode==='photo';
+  const head=`<div class="cam-top"><div><div class="eyebrow" style="color:#C9D2E3">Versión ${A?'A · Foto':'B · Video'} · ${cam.time}</div><b>${esc(cam.names)}</b></div><span class="chip neutral num" id="cam-clock">0:00</span></div>`;
+  let body='',foot='';
+  if(cam.state==='error'){
+    body=`<div class="cam-msg">${esc(cam.err)}</div>`;
+    foot=`<button class="btn" data-act="cam-skip">Cerrar</button>`;
+  }else if(cam.state==='review'){
+    body=A?`<img class="cam-view fit" src="${cam.url}" alt="Foto de verificación">`:`<video class="cam-view fit" src="${cam.url}" autoplay loop muted playsinline></video>`;
+    foot=`<div class="row2"><button class="btn" data-act="cam-retry">Repetir</button><button class="btn primary" data-act="cam-send">Enviar</button></div>`;
+  }else{
+    body=`<video class="cam-view mirror" id="cam-video" autoplay muted playsinline></video><div class="cam-count" id="cam-count" hidden></div>`;
+    foot=`<p class="cam-tip">${A?'Muestra la pastilla en tu mano, junto a tu cara, y toma la foto.':'Toca grabar, pon la pastilla en tu boca y toma agua. Se graban 5 segundos.'}</p>
+      <div class="cam-ctrl"><button class="shutter${A?'':' rec'}" data-act="cam-shot" aria-label="${A?'Tomar foto':'Grabar 5 segundos'}"${cam.stream&&cam.state==='live'?'':' disabled'}><i></i></button></div>`;
+  }
+  camIn().innerHTML=head+`<div class="cam-stage">${body}</div><div class="cam-foot">${foot}<button class="btn ghost cam-skip" data-act="cam-skip">Ahora no</button></div>`;
+  const v=document.getElementById('cam-video');
+  if(v&&cam.stream){v.srcObject=cam.stream;v.play().catch(()=>{})}
+  clearInterval(cam.tick);
+  const clk=()=>{const e=Math.floor((Date.now()-cam.opened)/1000),c=document.getElementById('cam-clock');if(c)c.textContent=`${Math.floor(e/60)}:${pad2(e%60)}`};
+  clk();cam.tick=setInterval(clk,1000);
+}
+// Dibuja el cuadro de la cámara (como espejo, igual que se ve) y estampa nombre, fecha y hora.
+function drawStamped(ctx,v,w,h){
+  ctx.save();ctx.translate(w,0);ctx.scale(-1,1);ctx.drawImage(v,0,0,w,h);ctx.restore();
+  const band=Math.round(h*0.075);
+  ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,h-band,w,band);
+  ctx.fillStyle='#fff';ctx.font=`600 ${Math.round(band*0.42)}px system-ui,sans-serif`;ctx.textBaseline='middle';
+  ctx.fillText(stampTxt(cam.names,new Date()),Math.round(w*0.03),h-band/2,w*0.94);
+}
+function camCanvas(){
+  const v=document.getElementById('cam-video');
+  const vw=v.videoWidth||720,vh=v.videoHeight||960,sc=Math.min(1,720/vw);
+  const c=document.createElement('canvas');c.width=Math.round(vw*sc);c.height=Math.round(vh*sc);
+  return {v,c,ctx:c.getContext('2d')};
+}
+function camShot(){
+  if(!cam||!cam.stream||cam.state!=='live')return;
+  const {v,c,ctx}=camCanvas();
+  if(cam.mode==='photo'){
+    drawStamped(ctx,v,c.width,c.height);
+    cam.takenAt=new Date();
+    c.toBlob(b=>{if(!cam)return;cam.blob=b;cam.url=URL.createObjectURL(b);cam.state='review';renderCam()},'image/jpeg',0.78);
+    return;
+  }
+  const types=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+  const mime=types.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t));
+  if(!mime||!c.captureStream){cam.state='error';cam.err='Este celular no permite grabar video aquí. Usa la versión A (foto).';return renderCam()}
+  const chunks=[];
+  const rec=new MediaRecorder(c.captureStream(24),{mimeType:mime,videoBitsPerSecond:900000});
+  cam.rec=rec;cam.state='rec';cam.takenAt=new Date();
+  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+  rec.onstop=()=>{if(!cam)return;cancelAnimationFrame(cam.raf);cam.blob=new Blob(chunks,{type:mime.split(';')[0]});cam.url=URL.createObjectURL(cam.blob);cam.state='review';renderCam()};
+  const loop=()=>{drawStamped(ctx,v,c.width,c.height);cam.raf=requestAnimationFrame(loop)};loop();
+  rec.start(250);
+  const btn=camIn().querySelector('.shutter');if(btn)btn.disabled=true;
+  const cnt=document.getElementById('cam-count');let left=5;
+  const step=()=>{if(!cam||cam.rec!==rec)return;if(cnt){cnt.hidden=false;cnt.textContent=left}if(left--<=0){rec.stop();return}setTimeout(step,1000)};step();
+}
+async function camSend(){
+  if(!cam||!cam.blob)return;
+  const {k,list,blob}=cam, d=cam.takenAt||new Date();
+  const kind=cam.mode==='photo'?'photo':'video', ext=kind==='photo'?'jpg':(blob.type.includes('mp4')?'mp4':'webm');
+  const path=`${patientId||'demo'}/${k}/${gidOf(list[0].med)}-${list[0].i}-${d.getTime()}.${ext}`;
+  const at=`${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  if(DEMO)demoBlobs[path]=cam.url;
+  else{try{await idb.put(path,{blob,type:blob.type||'image/jpeg',k})}catch(e){}}
+  saveDay(k,dd=>{dd.doses=dd.doses||{};list.forEach(s=>{const key=gidOf(s.med)+'#'+s.i;if(dd.doses[key])dd.doses[key].verif={kind,path,at,up:DEMO}})});
+  if(!DEMO)cam.url=null;
+  stopCam();
+  toast(kind==='photo'?'Foto guardada con tu toma':'Video guardado con tu toma');
+  uploadPending();
+}
+function camSkip(){
+  if(!cam)return;
+  const {k,list,state}=cam;
+  if(state!=='error')saveDay(k,dd=>{dd.doses=dd.doses||{};list.forEach(s=>{const key=gidOf(s.med)+'#'+s.i;if(dd.doses[key]&&!dd.doses[key].verif)dd.doses[key].verif={kind:'skipped',at:nowHHMM()}})});
+  stopCam();
+}
+// Muestra la foto o el video guardado dentro de la hoja de la toma.
+async function fillVerif(){
+  const box=document.querySelector('#sheet-in [data-vpath]');if(!box)return;
+  const path=box.dataset.vpath, video=/\.(webm|mp4)$/.test(path);
+  let url=demoBlobs[path]||null;
+  if(!url){try{const v=await idb.get(path);if(v&&v.blob)url=URL.createObjectURL(v.blob)}catch(e){}}
+  if(!url&&sb){const {data}=await sb.storage.from('verificaciones').createSignedUrl(path,3600);url=data&&data.signedUrl}
+  if(!box.isConnected)return;
+  box.innerHTML=url?(video?`<video src="${url}" controls loop muted playsinline></video>`:`<img src="${url}" alt="Verificación de la toma">`):'<p class="hint">No se pudo cargar. Revisa tu conexión.</p>';
+}
 
 /* ---------- datos de demostración (sin datos reales) ---------- */
 function demoState(){
@@ -695,7 +870,7 @@ function demoState(){
     {id:'pred',name:'Prednisona',strength:'',unit:'tableta',qty:null,type:'Corticoide',times:['09:00'],freq:{t:'d'},note:'Con el desayuno',strict:false,taper:{date:dkey(t0),mg:20,n:2,step:5,every:5,min:null},from:k0}];
   const days={};
   for(let i=6;i>=1;i--){const k=dkey(addDays(t0,-i));days[k]={doses:{'tacro#0':{s:'taken',at:'08:05'},'tacro#1':{s:'taken',at:'20:02'},'myco#0':{s:'taken',at:'10:00'},'myco#1':{s:'taken',at:'22:10'},'pred#0':{s:'taken',at:'09:15'}},ctrl:[{id:'c'+i,t:'07:30',pas:125+i,pad:80}],peso:72+i*0.2,labs:{crea:1.2+i*0.3,hb:9+i*0.1}}}
-  return {plan:{txDate:dkey(addDays(t0,-20)),labDate:'',labTentative:false,base:dkey(t0),meds},days};
+  return {plan:{txDate:dkey(addDays(t0,-20)),labDate:'',labTentative:false,base:dkey(t0),verify:{mode:'photo',scope:'strict'},meds},days};
 }
 
 /* ---------- vistas ---------- */
@@ -935,7 +1110,7 @@ function viewHistorial(){
     const lm=versionOn(g,tk)||latestV(g);
     return `<tr><td class="l"><b>${esc(lm.name)}</b><div class="med-note num">${lm.times.join(' · ')}</div></td>${keys.map(k=>{
       const m=versionOn(g,k);if(!m||!scheduledOn(m,k))return '<td class="med-note">·</td>';
-      return `<td><span class="dots">${m.times.map((t,i)=>{const s=slotStatus(k,m,i);return `<button class="dotbtn" data-act="open" data-med="${g}" data-i="${i}" data-k="${k}" aria-label="${esc(m.name)} ${fmtKey(k)} ${t}"><i class="dot ${dc[s.k]||'na'}"></i></button>`}).join('')}</span></td>`;
+      return `<td><span class="dots">${m.times.map((t,i)=>{const s=slotStatus(k,m,i);const rv=rec(k,m,i);return `<button class="dotbtn" data-act="open" data-med="${g}" data-i="${i}" data-k="${k}" aria-label="${esc(m.name)} ${fmtKey(k)} ${t}"><i class="dot ${dc[s.k]||'na'}${rv&&rv.verif&&rv.verif.path?' v':''}"></i></button>`}).join('')}</span></td>`;
     }).join('')}</tr>`;
   }).join('');
   const vrows=dayKeys().slice().reverse().map(k=>{
@@ -951,7 +1126,7 @@ function viewHistorial(){
   </div>
   <div class="sec"><h2>Tomas de la semana</h2>
     <div class="tbl"><table><thead><tr><th class="l">Medicamento</th>${head}</tr></thead><tbody><tr><td class="l lab">Cumplimiento</td>${pctRow}</tr>${rows}</tbody></table></div>
-    <div class="legend"><span><i class="dot ok"></i>A tiempo</span><span><i class="dot late"></i>Fuera de horario</span><span><i class="dot skip"></i>No tomada (con motivo)</span><span><i class="dot miss"></i>Sin registro</span><span><i class="dot na"></i>Pendiente</span><span>· No toca</span></div>
+    <div class="legend"><span><i class="dot ok"></i>A tiempo</span><span><i class="dot late"></i>Fuera de horario</span><span><i class="dot skip"></i>No tomada (con motivo)</span><span><i class="dot miss"></i>Sin registro</span><span><i class="dot na"></i>Pendiente</span><span><i class="dot ok v"></i>Con foto o video</span><span>· No toca</span></div>
     ${canWrite?'<p class="hint">Toca un punto para corregir esa toma.</p>':''}
   </div>
   <div class="sec"><h2>Controles por día</h2>
@@ -1013,6 +1188,8 @@ function viewEquipo(){
       <div class="kpi ${st.late.length?'warn':''}"><b>${st.late.length}</b><span>Tomas fuera de horario</span></div>
       <div class="kpi ${nt.length?'bad':''}"><b>${nt.length}</b><span>No tomadas o sin registro</span></div>
     </div>
+    ${(()=>{let tot=0,ver=0;for(let i=0;i<7;i++){const kk=dkey(addDays(today0(),-i));slotsFor(kk).forEach(s=>{if(!s.med.strict||!['ok','late'].includes(s.st.k))return;tot++;const r=rec(kk,s.med,s.i);if(r&&r.verif&&r.verif.path)ver++})}
+      return verifyCfg().mode!=='off'||ver?`<p class="sub">Tomas críticas verificadas con ${verifyCfg().mode==='video'?'video':'foto o video'} en 7 días: <b class="num">${ver} de ${tot}</b></p>`:''})()}
     <div class="sec"><h2>Últimos análisis</h2><dl class="kv" style="margin:0;grid-template-columns:repeat(2,minmax(0,1fr))">${LABS.map(labCell).join('')}</dl></div>
     <div class="sec"><h2>Controles</h2><dl class="kv" style="margin:0">
       <div><dt>Presión</dt><dd>${pa?`${pa.pas}/${pa.pad} <small>${fmtShort(pa.k)}</small>`:'—'}</dd></div>
@@ -1034,12 +1211,15 @@ function doseHTML(){
   const recorded=isDone(st.k);
   const status=st.k==='ok'||st.k==='late'?`<span class="chip ${st.k==='ok'?'ok':'warn'}" style="justify-self:start">${st.at?'Registrada a las '+st.at:'Tomada (sin hora)'}</span>`:st.k==='skip'?`<span class="chip neutral" style="justify-self:start">No tomada · ${esc(st.reason)}</span>`:st.k==='miss'?`<span class="chip bad" style="justify-self:start">Sin registro</span>`:'';
   const head=`<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">${isToday?'Hoy':fmtKey(k)} · ${t}</div><h3 id="sheet-title">${esc(m.name)}</h3><p class="sub">${esc(doseText(m,k))}${m.note?' · '+esc(m.note):''}</p></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div>${status}`;
-  if(!canWrite)return head;
+  if(!canWrite)return head+(r&&r.verif&&r.verif.path?`<div class="sec"><span class="lab">Verificación · <span class="num">${r.verif.at}</span></span><div class="vbox" data-vpath="${esc(r.verif.path)}"><p class="hint">Cargando…</p></div></div>`:'');
   const canSnooze=isToday&&['due','overdue','snooze'].includes(st.k);
   const tp=m.taper?taperFor(m,k):null;
   const amt=m.taper?`<div class="fgrid"><div class="field"><label for="d-mg">Dosis</label><div class="inwrap"><input id="d-mg" inputmode="decimal" value="${r&&r.mg!=null?r.mg:(tp&&tp.mg!=null?tp.mg:'')}"><span class="u">mg</span></div></div><div class="field"><label for="d-n">Dosis n° (de ${m.taper.every})</label><input id="d-n" inputmode="numeric" value="${r&&r.n!=null?r.n:(tp&&tp.count?tp.count:'')}"></div><p class="hint" style="grid-column:1/-1">Si la licenciada te dio otra dosis, cámbiala aquí. El conteo sigue desde ese número.</p></div>`
     :m.qty!=null?`<div class="fgrid"><div class="field"><label for="d-q">Cantidad (${unitWord(m.unit,2)})</label><input id="d-q" inputmode="decimal" value="${r&&r.q!=null?r.q:m.qty}"></div><label class="checkrow" style="grid-column:auto;align-self:end;padding-bottom:10px"><input type="checkbox" id="d-keep"> Nueva cantidad desde hoy</label></div>`:'';
-  return `${head}${amt}<p class="err" id="d-err" hidden></p>
+  const vf=r&&r.verif, vbox=vf&&vf.path?`<div class="sec"><span class="lab">${vf.kind==='video'?'Video':'Foto'} de verificación · <span class="num">${vf.at}</span>${vf.up===false?' · pendiente de subir':''}</span><div class="vbox" data-vpath="${esc(vf.path)}"><p class="hint">Cargando…</p></div></div>`
+    :vf&&vf.kind==='skipped'?`<span class="chip neutral" style="justify-self:start">Sin verificar</span>`:'';
+  const vnow=recorded&&st.k!=='skip'&&needsVerify(m)&&!(vf&&vf.path)?`<button class="btn" data-act="v-later">${verifyCfg().mode==='photo'?'Verificar con foto':'Verificar con video'}</button>`:'';
+  return `${head}${vbox}${vnow}${amt}<p class="err" id="d-err" hidden></p>
   <div class="stack">
     ${isToday?`<button class="btn primary" data-act="d-now">${I.check} La tomé ahora · ${nowHHMM()}</button>`:''}
     <div class="inline"><label for="d-at">La tomé a las</label><input type="time" id="d-at" value="${r&&r.at||t}"><button class="btn small" data-act="d-at">Guardar</button></div>
@@ -1124,11 +1304,16 @@ function planHTML(){
     <div class="row2"><button class="btn" data-act="n-test">Probar alarma</button><button class="btn" data-act="n-perm">Permitir pantalla completa</button></div>
     <p class="hint" style="color:var(--ink)">Si al probar no se prende la pantalla, toca "Permitir pantalla completa" y activa el permiso.</p>
   </div>`:`<div class="card soft"><h2>Avisos</h2><p class="hint" style="color:var(--ink)">En la versión web los avisos aparecen solo con la página abierta. Las alarmas que suenan con el celular bloqueado están en la app de Android.</p></div>`}
+  <div class="sec"><h2>Verificación de tomas</h2>
+    <div class="seg" role="group" aria-label="Versión">${[['off','Desactivada'],['photo','A · Foto'],['video','B · Video']].map(([v,l])=>`<button class="tog" data-act="verify-mode" data-v="${v}" aria-pressed="${verifyCfg().mode===v}">${l}</button>`).join('')}</div>
+    ${verifyCfg().mode!=='off'?`<div class="seg" role="group" aria-label="Para qué tomas">${[['strict','Solo críticos'],['all','Todos']].map(([v,l])=>`<button class="tog" data-act="verify-scope" data-v="${v}" aria-pressed="${verifyCfg().scope===v}">${l}</button>`).join('')}</div>`:''}
+    <p class="hint">Al marcar una toma se abre la cámara frontal en vivo (no se puede elegir de la galería). La foto o el video llevan la fecha y la hora, y los puede ver tu equipo.</p>
+  </div>
   ${appearanceHTML()}
   ${session?`<div class="sec"><h2>Cuenta</h2><p class="sub">${esc(session.user.email)}</p><button class="btn ghost" data-act="logout">Cerrar sesión</button></div>`:''}`;
 }
 function openSheet(html){sheetIn.innerHTML=html;if(!sheet.open)sheet.showModal();sheet.scrollTop=0}
-const openDose=(id,i,k)=>{cur={id,i:Number(i),k};openSheet(doseHTML())};
+const openDose=(id,i,k)=>{cur={id,i:Number(i),k};openSheet(doseHTML());fillVerif()};
 const openPlan=()=>{planEdit=null;openSheet(planHTML())};
 const refreshPlan=()=>{sheetIn.innerHTML=planHTML()};
 sheet.addEventListener('close',()=>{cur=null;planEdit=null;render()});
@@ -1173,14 +1358,16 @@ document.addEventListener('click',e=>{
       if(!canWrite||!m)break;
       const st=slotStatus(k,m,+b.dataset.i);
       if(isDone(st.k)){openDose(gidOf(m),b.dataset.i,k);break}
-      const at=nowHHMM();setDose(k,m,+b.dataset.i,{s:'taken',at,...defAmt(m,k)});toast(`${m.name}: registrada a las ${at}`);break;
+      const at=nowHHMM();setDose(k,m,+b.dataset.i,{s:'taken',at,...defAmt(m,k)});toast(`${m.name}: registrada a las ${at}`);
+      startVerify(k,[{med:m,i:+b.dataset.i,time:m.times[+b.dataset.i]}]);break;
     }
     case 'open':if(m)openDose(gidOf(m),b.dataset.i,k);break;
     case 'take-group':{
       const at=nowHHMM(), tk=todayKey(), todo=slotsFor(tk).filter(s=>s.time===t&&!isDone(s.st.k));
       saveDay(tk,d=>{d.doses=d.doses||{};todo.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'taken',at,...defAmt(s.med,tk)}})});
       nativePost({type:'stopAlarm'});
-      toast(`${todo.length} medicamento${todo.length>1?'s':''} de las ${t} registrado${todo.length>1?'s':''}`);break;
+      toast(`${todo.length} medicamento${todo.length>1?'s':''} de las ${t} registrado${todo.length>1?'s':''}`);
+      startVerify(tk,todo);break;
     }
     case 'jump':document.getElementById('g-'+t.replace(':',''))?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});break;
     case 'plan':openPlan();break;
@@ -1190,7 +1377,8 @@ document.addEventListener('click',e=>{
       if(!/^\d{2}:\d{2}$/.test(at))break;
       const am=readAmt(cm,cur.k);if(am.err){showErr('d-err',am.err);break}
       setDose(cur.k,cm,cur.i,{s:'taken',at,...am.rec});if(am.plan)savePlan(am.plan);
-      toast(`${cm.name}: registrada a las ${at}${am.plan?' · tu plan se actualizó':''}`);sheet.close();break;
+      toast(`${cm.name}: registrada a las ${at}${am.plan?' · tu plan se actualizó':''}`);const vk=cur.k,vi=cur.i;sheet.close();
+      startVerify(vk,[{med:cm,i:vi,time:cm.times[vi]}]);break;
     }
     case 'd-snooze':{const until=fromMin(nowMin()+15);setDose(cur.k,cm,cur.i,{s:'snooze',until});toast(`Te recordamos ${cm.name} a las ${until}`);sheet.close();break}
     case 'd-skip':{const r=sheetIn.querySelector('input[name="reason"]:checked');setDose(cur.k,cm,cur.i,{s:'skip',reason:r?r.value:REASONS[0]});toast(`${cm.name}: anotada como no tomada`);sheet.close();break}
@@ -1225,6 +1413,15 @@ document.addEventListener('click',e=>{
       const t=themePref();if(a==='theme-mode')t.mode=b.dataset.v;else t.accent=b.dataset.v;LS.set('mct-theme',t);applyTheme();
       b.parentElement.querySelectorAll('[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
       break;
+    }
+    case 'cam-shot':camShot();break;
+    case 'cam-send':camSend();break;
+    case 'cam-retry':if(cam){cam.blob=null;cam.url=null;cam.state='live';renderCam()}break;
+    case 'cam-skip':camSkip();break;
+    case 'v-later':{const vm=versionOn(cur.id,cur.k),vk=cur.k,vi=cur.i;sheet.close();if(vm)startVerify(vk,[{med:vm,i:vi,time:vm.times[vi]}]);break}
+    case 'verify-mode':case 'verify-scope':{
+      const v={...verifyCfg()};if(a==='verify-mode')v.mode=b.dataset.v;else v.scope=b.dataset.v;
+      savePlan(p=>{p.verify=v});refreshPlan();break;
     }
     case 'n-test':nativePost({type:'test'});toast('En unos segundos debería sonar una alarma de prueba');break;
     case 'n-perm':nativePost({type:'settings'});break;
@@ -1384,9 +1581,15 @@ async function boot(){
   if(!window.supabase||!CFG.url){phase='error';render();return}
   sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'mct-auth'}});
   sb.auth.onAuthStateChange((ev,s)=>{if(s)session=s;if(ev==='PASSWORD_RECOVERY'){phase='reset';render()}});
+  // Abre al instante con lo guardado en el celular; el servidor actualiza después.
+  const last=LS.get('mct-last')||{};
+  if(last.uid&&last.role!=='clinician'){
+    patientId=last.uid;const c=LS.get(CK());
+    if(c){role='patient';canWrite=true;outbox=LS.get(OBK())||[];S={plan:c.plan,days:c.days||{}};phase='ready';render()}
+  }
   const {data}=await sb.auth.getSession();session=data.session;
   if(location.hash.includes('access_token')||location.hash.includes('error'))history.replaceState(null,'',location.pathname+location.search);
-  if(!session){phase='auth';render();return}
+  if(!session){patientId=null;canWrite=false;S={plan:null,days:{}};phase='auth';render();return}
   if(phase!=='reset')openSession();
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&phase==='ready')refresh()});
