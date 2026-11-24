@@ -8,7 +8,8 @@ Esta app registra y recuerda. No da indicaciones médicas: las dosis las define 
 
 | Carpeta | Qué es |
 |---|---|
-| `web/` | La interfaz (una sola página). Se publica en GitHub Pages para el equipo médico y va incluida dentro de la app de Android. |
+| `web/` | La interfaz (una sola página). Se publica en GitHub Pages y va incluida dentro de la app de Android. |
+| `web/equipo/` | Manifiesto, íconos y service worker de la **app del equipo** (PC y celular, instalable): la misma página en modo panel, en `…/equipo/`. |
 | `app/` | App de Android (Expo). Muestra la página y programa las alarmas nativas. |
 | `supabase/` | Base de datos: tablas y reglas de acceso. |
 
@@ -22,11 +23,11 @@ Esta app registra y recuerda. No da indicaciones médicas: las dosis las define 
 ## Comandos
 
 ```bash
-cd web && npm install && npm run build      # genera web/dist/index.html y app/src/webapp.js
+cd web && npm install && npm run build      # genera web/dist/index.html, web/dist/equipo/ y app/src/webapp.js
 ```
 
 ```bash
 cd app && npx eas-cli@latest build -p android --profile preview   # APK en la nube de Expo
 ```
 
-La página publicada vive en la rama `gh-pages` (copia de `web/dist/index.html`).
+La página publicada vive en la rama `gh-pages` (copia de `web/dist/`): la del paciente en la raíz y la app del equipo en `equipo/`.

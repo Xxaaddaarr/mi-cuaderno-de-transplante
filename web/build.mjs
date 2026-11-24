@@ -23,6 +23,22 @@ const html = head + app + '</body></html>';
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist/index.html'), html);
 
+// App del equipo (PC y celular): misma página en modo panel, instalable, con su ícono y manifiesto.
+const team = html
+  .replace('<title>Mi Cuaderno Tx</title>', '<title>Mi Cuaderno Tx · Equipo</title>')
+  .replace('<meta name="robots" content="noindex">', `<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B7A68">
+<meta name="application-name" content="Tx Equipo"><meta name="apple-mobile-web-app-title" content="Tx Equipo">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png"><link rel="apple-touch-icon" href="icon-180.png">
+<script>window.MCT_APP='equipo'</script>`);
+if (team === html || !team.includes("MCT_APP='equipo'") || !team.includes('· Equipo</title>')) throw new Error('No se pudo armar la app del equipo');
+const teamDir = path.join(root, 'dist/equipo');
+fs.mkdirSync(teamDir, { recursive: true });
+fs.writeFileSync(path.join(teamDir, 'index.html'), team);
+for (const f of fs.readdirSync(path.join(root, 'equipo'))) fs.copyFileSync(path.join(root, 'equipo', f), path.join(teamDir, f));
+
 const appDir = path.join(root, '../app/src');
 if (fs.existsSync(appDir)) fs.writeFileSync(path.join(appDir, 'webapp.js'), `// Generado por web/build.mjs. No editar a mano.\nexport default ${JSON.stringify(html)};\n`);
-console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB`);
+console.log(`dist/index.html ${(html.length / 1024).toFixed(0)} KB · dist/equipo/index.html ${(team.length / 1024).toFixed(0)} KB`);

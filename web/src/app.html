@@ -295,6 +295,11 @@ dialog.cam::backdrop{background:#05080D}
 .dot.v{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--accent)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(82px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:20;width:max-content;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgb(0 0 0 / .2)}
 @media (max-width:360px){.kpis.k3{grid-template-columns:1fr 1fr}.kv{grid-template-columns:1fr 1fr}}
+/* App del equipo: en pantallas anchas el panel usa todo el ancho y las hojas se abren al centro */
+html.team[data-phase="panel"] .app{max-width:1180px}
+html.team .pcards{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+@media (min-width:760px){html.team dialog.sheet{margin:auto;border-radius:22px;max-height:86vh;max-height:86dvh}html.team[data-phase="panel"] #view>.btn{display:inline-flex;width:auto;min-width:220px;margin-right:8px}}
+.install{display:grid;gap:8px}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 
@@ -527,6 +532,12 @@ const alertHTML=([lvl,t,m],when)=>`<div class="alert ${lvl}">${I.alert}<div><div
 const CFG=window.MCT_CONFIG||{};
 const DEMO=/[?&#]demo\b/.test(location.search+location.hash)||!!window.MCT_DEMO;
 const NATIVE=!!window.ReactNativeWebView;
+/* App del equipo (…/equipo/): solo el panel, sin crear cuentas, instalable en PC y celular */
+const TEAM=window.MCT_APP==='equipo';
+const K_LAST=TEAM?'mct-last-eq':'mct-last', K_THEME=TEAM?'mct-theme-eq':'mct-theme';
+if(TEAM)document.documentElement.classList.add('team');
+let installEvt=null;
+const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 let sb=null, session=null, patientId=null, patientName='', role='patient', team=[], patients=[], outbox=[], flushing=false, localRev=0, authMode='in', authMsg='';
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const CK=()=>'mct-cache-'+patientId, OBK=()=>'mct-outbox-'+patientId;
@@ -683,7 +694,7 @@ function windowCard(k){
 
 /* ---------- apariencia: modo claro/oscuro y color ---------- */
 const ACCENTS=[['azul','Azul','#2443B0'],['gris','Gris','#475467'],['rosa','Rosa','#B4236E'],['verde','Verde','#0B7A68'],['violeta','Violeta','#6B3FC9']];
-const themePref=()=>LS.get('mct-theme')||{};
+const themePref=()=>LS.get(K_THEME)||(TEAM?{accent:'verde'}:{});
 function applyTheme(){
   const t=themePref(), r=document.documentElement;
   if(t.mode==='light'||t.mode==='dark')r.dataset.theme=t.mode;else delete r.dataset.theme;
@@ -968,6 +979,7 @@ function viewPanel(){
   return `<div class="sec-h"><h2>Pacientes</h2><span class="lab">${panelRows.length} · actualizado <span class="num">${panelAt?fromMin(panelAt.getHours()*60+panelAt.getMinutes()):''}</span></span></div>
     ${panelRows.length?`<div class="pcards">${cards}</div>`:'<p class="empty-s">Todavía no hay pacientes.</p>'}
     <button class="btn ghost" data-act="panel-reload">Actualizar</button>
+    ${TEAM&&installEvt?`<button class="btn primary" data-act="install">Instalar la app en este dispositivo</button>`:''}
     <p class="hint">Ordenados por quién necesita atención primero: tomas críticas atrasadas y alertas (fiebre, presión, síntomas de alarma), luego la adherencia más baja.</p>`;
 }
 function openPanel(){
@@ -1050,7 +1062,7 @@ function staffHTML(created){
   const RL={admin:'Admin',doctor:'Médico/a',nurse:'Licenciada'};
   return `<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">Admin</div><h3 id="sheet-title">Personal de la unidad</h3></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div>
   ${staffList?`<div class="plist">${staffList.map(x=>`<div class="pitem"><div style="min-width:0"><b>${esc(x.display_name||'Sin nombre')}</b><div class="med-note">${RL[x.role]||x.role}${x.active?'':' · desactivado'}</div></div>${x.user_id===session.user.id?'<span class="lab">Tú</span>':`<button class="btn small ${x.active?'ghost danger':''}" data-act="staff-toggle" data-id="${x.user_id}" data-on="${x.active?0:1}">${x.active?'Desactivar':'Activar'}</button>`}</div>`).join('')}</div>`:'<p class="hint">Cargando…</p>'}
-  ${created?`<div class="note info">${I.check}<div><b>Cuenta creada.</b> Pásale a la persona su correo <b>${esc(created.email)}</b> y la contraseña temporal <b class="num">${esc(created.pass)}</b>. Puede cambiarla en Cuenta.</div></div>`:''}
+  ${created?`<div class="note info">${I.check}<div><b>Cuenta creada.</b> Pásale a la persona su correo <b>${esc(created.email)}</b> y la contraseña temporal <b class="num">${esc(created.pass)}</b>. Entra en <b>${esc(CFG.siteUrl+'equipo/')}</b> (computadora o celular) y puede cambiarla en Cuenta.</div></div>`:''}
   <form id="staff-form" class="card" novalidate>
     <h2>Agregar persona</h2>
     <div class="fgrid">
@@ -1089,13 +1101,24 @@ function renderTop(){
   else if(phase==='ready'&&mode==='view')btn=`<div class="topbtns"><button class="btn small" data-act="panel">← Panel</button>${canEditPlan?`<button class="btn small" data-act="plan">${I.list} Plan</button>`:''}</div>`;
   else if(phase==='ready')btn=`<div class="topbtns">${staffRole?`<button class="btn small" data-act="panel">Panel</button>`:''}${canWrite?`<button class="btn small" data-act="plan">${I.list} Mi plan</button>`:role==='clinician'?`<button class="btn small" data-act="acct">Cuenta</button>`:''}</div>`;
   if(phase==='panel'){document.getElementById('top').innerHTML=`<div><div class="eyebrow"><span>${fmtDate(new Date())}</span><span class="pill-ro">${RL[staffRole]||''}</span></div><h1>Panel <small>del equipo</small></h1></div>${btn}`;return}
-  document.getElementById('top').innerHTML=`<div><div class="eyebrow"><span>${fmtDate(new Date())}</span>${who}${!canWrite&&phase==='ready'?`<span class="pill-ro">${canEditPlan?'Médico/a · puede editar recetas':'Solo lectura'}</span>`:''}${sync}${DEMO?'<span class="pill-ro">Demo</span>':''}</div><h1>${dn!=null?`Día ${dn} <small>post-trasplante</small>`:'Mi Cuaderno Tx'}</h1></div>${btn}`;
+  document.getElementById('top').innerHTML=`<div><div class="eyebrow"><span>${fmtDate(new Date())}</span>${who}${!canWrite&&phase==='ready'?`<span class="pill-ro">${canEditPlan?'Médico/a · puede editar recetas':'Solo lectura'}</span>`:''}${sync}${DEMO?'<span class="pill-ro">Demo</span>':''}</div><h1>${dn!=null?`Día ${dn} <small>post-trasplante</small>`:TEAM?'Mi Cuaderno Tx <small>Equipo</small>':'Mi Cuaderno Tx'}</h1></div>${btn}`;
 }
 function renderTabs(){
   document.getElementById('tabs').innerHTML=phase!=='ready'?'':TABS.map(([id,l,ic])=>`<button class="tab" data-act="tab" data-tab="${id}"${tab===id?' aria-current="page"':''}>${I[ic]}<span>${l}</span></button>`).join('');
   document.querySelector('.tabs').hidden=phase!=='ready';
 }
 function viewAuth(){
+  if(TEAM)return `<form id="auth-form" class="card" novalidate>
+    <h2>Acceso del equipo</h2>
+    <p class="sub">Entra con el correo y la contraseña que te dio el administrador de la unidad.</p>
+    <div class="field"><label for="a-email">Correo</label><input id="a-email" type="email" autocomplete="email" inputmode="email" autocapitalize="none"></div>
+    <div class="field"><label for="a-pass">Contraseña</label><input id="a-pass" type="password" autocomplete="current-password"></div>
+    <p class="err" id="a-err" hidden></p>
+    ${authMsg?`<div class="note info">${I.bell}<div>${authMsg}</div></div>`:''}
+    <button class="btn primary" type="submit">Entrar</button>
+    <button type="button" class="btn ghost" data-act="auth-forgot">Olvidé mi contraseña</button>
+  </form>
+  <p class="hint">Solo para médicos, licenciadas y administradores de la unidad de trasplante. Las cuentas las crea el administrador. Los pacientes usan la app Mi Cuaderno Tx.</p>`;
   const up=authMode==='up';
   return `<form id="auth-form" class="card" novalidate>
     <h2>${up?'Crear cuenta':'Entrar a tu cuaderno'}</h2>
@@ -1122,13 +1145,31 @@ function viewPick(){
       :`<p class="sub">Todavía ningún paciente te dio acceso. Pídele que te agregue desde su app con tu correo: <b>${esc(session&&session.user.email||'')}</b>.</p><button class="btn" data-act="reload-pick">Volver a revisar</button>`}
     <button class="btn ghost" data-act="logout">Cerrar sesión</button></div>`;
 }
+function viewNoAccess(){
+  return `<div class="card"><h2>Esta app es solo para el equipo</h2>
+    <p class="sub">La cuenta <b>${esc(session&&session.user.email||'')}</b> no está registrada como personal de la unidad de trasplante. Si eres médico/a o licenciada, pídele al administrador que te cree una cuenta.</p>
+    <p class="sub">Si eres paciente, usa la app Mi Cuaderno Tx.</p>
+    <a class="btn" href="../">Abrir Mi Cuaderno Tx</a>
+    <button class="btn ghost" data-act="logout">Cerrar sesión</button></div>`;
+}
+function installHTML(){
+  if(!TEAM||isStandalone())return '';
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  return `<div class="sec install"><h2>Instalar la app</h2>
+    ${installEvt?`<button class="btn primary" data-act="install">Instalar en este dispositivo</button>`
+      :`<p class="hint">${ios?'En Safari: botón Compartir → <b>Agregar a inicio</b>.':'En Chrome o Edge: menú ⋮ → <b>Instalar app</b> (en el celular: <b>Agregar a la pantalla principal</b>).'}</p>`}
+  </div>`;
+}
 function render(){
+  document.documentElement.dataset.phase=phase;
   renderTop();renderTabs();
+  if(phase==='noaccess'){view.innerHTML=viewNoAccess();return}
   if(phase==='auth'){view.innerHTML=viewAuth();return}
   if(phase==='reset'){view.innerHTML=viewReset();return}
   if(phase==='pick'){view.innerHTML=viewPick();return}
   if(phase==='panel'){view.innerHTML=viewPanel();return}
-  if(phase==='error'){view.innerHTML=`<div class="card"><h2>No se pudo abrir tu cuaderno</h2><p class="sub">Revisa tu conexión a internet e inténtalo otra vez.</p><button class="btn" data-act="retry">Reintentar</button></div>`;return}
+  if(phase==='error'){view.innerHTML=`<div class="card"><h2>${TEAM?'No se pudo abrir el panel':'No se pudo abrir tu cuaderno'}</h2><p class="sub">Revisa tu conexión a internet e inténtalo otra vez.</p><button class="btn" data-act="retry">Reintentar</button></div>`;return}
+  if(phase==='loading'&&TEAM&&!patientId){view.innerHTML=`<div class="card"><h2>Abriendo el panel</h2><p class="sub">${stale?'La conexión está tardando. Revisa tu internet.':'Cargando pacientes.'}</p></div>`;return}
   if(phase==='loading'){view.innerHTML=`<div class="card"><h2>Abriendo tu cuaderno</h2><p class="sub">${stale?'La conexión está tardando. Revisa tu internet; seguimos intentando.':'Cargando tus medicamentos, controles y análisis.'}</p></div>`;return}
   const staleNote=stale?`<div class="note">${I.alert}<div>Sin conexión con tu cuaderno. Lo que ves puede no estar actualizado.</div></div>`:'';
   view.innerHTML=staleNote+(tab==='hoy'?viewHoy():tab==='controles'?viewControles():tab==='analisis'?viewAnalisis():tab==='historial'?viewHistorial():viewEquipo());
@@ -1607,26 +1648,27 @@ document.addEventListener('click',e=>{
     case 'auth-forgot':{
       const email=(document.getElementById('a-email').value||'').trim();
       if(!email){showErr('a-err','Escribe tu correo y vuelve a tocar "Olvidé mi contraseña".');break}
-      sb.auth.resetPasswordForEmail(email,{redirectTo:CFG.siteUrl}).then(({error})=>{authMsg=error?'No se pudo enviar el correo. Inténtalo en unos minutos.':`Si hay una cuenta con ${esc(email)}, te llegó un correo para cambiar la contraseña.`;render()});
+      sb.auth.resetPasswordForEmail(email,{redirectTo:TEAM?CFG.siteUrl+'equipo/':CFG.siteUrl}).then(({error})=>{authMsg=error?'No se pudo enviar el correo. Inténtalo en unos minutos.':`Si hay una cuenta con ${esc(email)}, te llegó un correo para cambiar la contraseña.`;render()});
       break;
     }
     case 'retry':location.reload();break;
     case 'reload-pick':loadClinicianPatients();break;
     case 'pick':{const p=patients.find(x=>x.id===b.dataset.id);if(p){LS.set('mct-doc-pid',p.id);openPatient(p)}break}
-    case 'acct':openSheet(`<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">Cuenta</div><h3 id="sheet-title">${esc(session&&session.user.email||'')}</h3></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div>${passFormHTML()}${appearanceHTML()}${patients.length>1?`<button class="btn" data-act="switch">Cambiar de paciente</button>`:''}<button class="btn ghost" data-act="logout">Cerrar sesión</button>`);break;
+    case 'acct':openSheet(`<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">Cuenta</div><h3 id="sheet-title">${esc(session&&session.user.email||'')}</h3></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div>${passFormHTML()}${appearanceHTML()}${installHTML()}${patients.length>1?`<button class="btn" data-act="switch">Cambiar de paciente</button>`:''}<button class="btn ghost" data-act="logout">Cerrar sesión</button>`);break;
     case 'switch':sheet.close();LS.del('mct-doc-pid');patientId=null;patientName='';S={plan:null,days:{}};phase='pick';render();break;
     case 'logout':
       if(outbox.length&&!armed(b,`Hay ${outbox.length} cambios sin subir. Toca otra vez para salir igual`))break;
       if(sheet.open)sheet.close();
-      sb.auth.signOut().finally(()=>{LS.del('mct-last');location.hash='';location.reload()});
+      sb.auth.signOut().finally(()=>{LS.del(K_LAST);if(TEAM)clearTeamCache();location.hash='';location.reload()});
       break;
     case 'team-del':if(armed(b,'¿Quitar?')){sb.from('care_team').delete().match({patient_id:patientId,clinician_id:b.dataset.id}).then(({error})=>{if(error)toast('No se pudo quitar el acceso. Revisa tu conexión.');else{toast('Acceso quitado');loadTeam()}})}break;
     case 'theme-mode':case 'theme-accent':{
-      const t=themePref();if(a==='theme-mode')t.mode=b.dataset.v;else t.accent=b.dataset.v;LS.set('mct-theme',t);applyTheme();
+      const t=themePref();if(a==='theme-mode')t.mode=b.dataset.v;else t.accent=b.dataset.v;LS.set(K_THEME,t);applyTheme();
       b.parentElement.querySelectorAll('[aria-pressed]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
       break;
     }
     case 'panel':openPanel();break;
+    case 'install':if(installEvt){const ev=installEvt;installEvt=null;ev.prompt();ev.userChoice.finally(()=>{if(sheet.open)sheet.close();safeRender()})}break;
     case 'panel-reload':panelRows=null;render();loadPanel();break;
     case 'p-open':openFromPanel(b.dataset.id);break;
     case 'own':backToOwn();break;
@@ -1795,14 +1837,15 @@ tab=validTab(location.hash.slice(1))||'hoy';
 render();
 
 async function openSession(){
-  const uid=session.user.id, last=LS.get('mct-last')||{};
+  const uid=session.user.id, last=LS.get(K_LAST)||{};
+  if(TEAM)return openTeamSession(uid,last);
   try{const {data,error}=await sb.from('profiles').select('role').eq('id',uid).maybeSingle();if(error)throw error;role=data?data.role:'patient'}
   catch(e){role=last.uid===uid&&last.role?last.role:'patient'}
   try{const {data,error}=await sb.from('staff').select('role,display_name,active').eq('user_id',uid).maybeSingle();if(error)throw error;staffRole=data&&data.active?data.role:null;staffName=data?data.display_name:''}
   catch(e){staffRole=last.uid===uid?last.staffRole||null:null}
   try{const {data,error}=await sb.from('patients').select('id').eq('id',uid).maybeSingle();if(error)throw error;hasOwn=!!data||!staffRole}
   catch(e){hasOwn=last.uid===uid?last.hasOwn!==false:true}
-  LS.set('mct-last',{uid,role,staffRole,hasOwn});
+  LS.set(K_LAST,{uid,role,staffRole,hasOwn});
   if(staffRole&&(!hasOwn||location.hash==='#panel'))return openPanel();
   if(role==='clinician'&&!staffRole){canWrite=false;if(!validTab(location.hash.slice(1)))tab='equipo';return loadClinicianPatients()}
   mode='patient';patientId=uid;canWrite=true;canEditPlan=true;
@@ -1814,6 +1857,25 @@ async function openSession(){
   await refresh();
   loadTeam();
   if(pendingAction){const a=pendingAction;pendingAction=null;window.mctNativeAction(a)}
+}
+/* App del equipo: abre el panel al instante si la última vez era personal; confirma el rol en segundo plano. */
+async function openTeamSession(uid,last){
+  hasOwn=false;
+  const fast=last.uid===uid&&last.staffRole;
+  if(fast){staffRole=last.staffRole;staffName=last.staffName||'';openPanel()}
+  let sr, name='';
+  try{const {data,error}=await sb.from('staff').select('role,display_name,active').eq('user_id',uid).maybeSingle();if(error)throw error;sr=data&&data.active?data.role:null;name=data?data.display_name:''}
+  catch(e){if(fast)return;phase='error';return render()}
+  LS.set(K_LAST,{uid,staffRole:sr,staffName:name});
+  staffName=name;
+  if(!sr){staffRole=null;mode='patient';phase='noaccess';return render()}
+  if(!fast){staffRole=sr;return openPanel()}
+  if(sr!==staffRole){staffRole=sr;if(mode==='view')canEditPlan=sr==='doctor';render()}
+}
+function clearTeamCache(){
+  // En computadoras compartidas no deja copias de pacientes; los cambios sin subir sí se quedan.
+  const own=(LS.get('mct-last')||{}).uid;
+  try{Object.keys(localStorage).filter(k=>k.startsWith('mct-cache-')&&k!=='mct-cache-'+own).forEach(k=>localStorage.removeItem(k))}catch(e){}
 }
 async function loadClinicianPatients(){
   try{
@@ -1833,18 +1895,24 @@ async function boot(){
   sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'mct-auth'}});
   sb.auth.onAuthStateChange((ev,s)=>{if(s)session=s;if(ev==='PASSWORD_RECOVERY'){phase='reset';render()}});
   // Abre al instante con lo guardado en el celular; el servidor actualiza después.
-  const last=LS.get('mct-last')||{};
-  if(last.uid&&last.role!=='clinician'&&last.hasOwn!==false){
+  const last=LS.get(K_LAST)||{};
+  if(!TEAM&&last.uid&&last.role!=='clinician'&&last.hasOwn!==false){
     patientId=last.uid;const c=LS.get(CK());
     if(c){role='patient';canWrite=true;outbox=LS.get(OBK())||[];S={plan:c.plan,days:c.days||{}};phase='ready';render()}
   }
   const {data}=await sb.auth.getSession();session=data.session;
   if(location.hash.includes('access_token')||location.hash.includes('error'))history.replaceState(null,'',location.pathname+location.search);
-  if(!session){patientId=null;canWrite=false;S={plan:null,days:{}};phase='auth';render();return}
+  if(!session){patientId=null;canWrite=false;staffRole=null;S={plan:null,days:{}};phase='auth';render();return}
   if(phase!=='reset')openSession();
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&phase==='ready')refresh()});
-setInterval(()=>{if(role==='clinician'&&phase==='ready'&&!document.hidden)refresh()},120000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;if(phase==='ready')refresh();else if(phase==='panel'&&panelRows)loadPanel()});
+// El personal ve los datos al día: el panel y el paciente abierto se actualizan cada 2 minutos.
+setInterval(()=>{if(document.hidden)return;if(phase==='ready'&&(role==='clinician'||mode==='view'))refresh();else if(phase==='panel'&&panelRows&&!sheet.open)loadPanel()},120000);
+if(TEAM){
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;if(phase==='panel'&&!sheet.open)safeRender()});
+  window.addEventListener('appinstalled',()=>{installEvt=null;toast('App del equipo instalada');if(!sheet.open)safeRender()});
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 boot();
 
 const alerted=new Set();
@@ -1852,7 +1920,7 @@ setInterval(()=>{
   if(phase!=='ready')return;
   const k=todayKey(), n=nowMin();
   const dueNow=slotsFor(k).filter(s=>toMin(s.time)===n&&!isDone(s.st.k));
-  if(dueNow.length&&!alerted.has(k+dueNow[0].time)){alerted.add(k+dueNow[0].time);toast(`Es hora: ${uniqNames(dueNow)}`)}
+  if(canWrite&&dueNow.length&&!alerted.has(k+dueNow[0].time)){alerted.add(k+dueNow[0].time);toast(`Es hora: ${uniqNames(dueNow)}`)}
   if(tab==='hoy'&&!sheet.open)safeRender();
   syncNative();
 },30000);
