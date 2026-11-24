@@ -17,6 +17,7 @@ import MctAlarm from './modules/mct-alarm/src/MctAlarmModule';
 const SITE = 'https://xxaaddaarr.github.io/mi-cuaderno-de-transplante/';
 const CH_DOSES = 'tomas-v1';
 const CH_INFO = 'avisos-v1';
+const CH_SOFT = 'suave-v1';
 const CATEGORY = 'dosis';
 
 Notifications.setNotificationHandler({
@@ -48,6 +49,11 @@ async function setupNotifications() {
     importance: Notifications.AndroidImportance.HIGH,
     sound: 'default',
   });
+  await Notifications.setNotificationChannelAsync(CH_SOFT, {
+    name: 'Avisos suaves',
+    description: 'Aviso previo de vitaminas y medicamentos flexibles',
+    importance: Notifications.AndroidImportance.LOW,
+  });
   await Notifications.setNotificationCategoryAsync(CATEGORY, [
     { identifier: 'taken', buttonTitle: 'Tomé', options: { opensAppToForeground: true } },
     { identifier: 'snooze', buttonTitle: 'Posponer 15 min', options: { opensAppToForeground: true } },
@@ -63,32 +69,35 @@ function applySchedule(items) {
       await Notifications.cancelAllScheduledNotificationsAsync();
       const now = Date.now();
       const future = items.filter((it) => it && it.at > now);
-      // Tomas: alarma nativa tipo despertador. Si el módulo no está, van como notificación.
+      // kind: 'alarm' (crítico/profiláctico: despertador nativo), 'dose' (flexible: notificación con Tomé),
+      // 'pre' (aviso 10 min antes) o sin kind (avisos). Sin módulo nativo, todo va como notificación.
+      const isAlarm = (it) => (it.kind ? it.kind === 'alarm' : !it.info);
       if (MctAlarm) {
         const doses = future
-          .filter((it) => !it.info)
+          .filter(isAlarm)
           .map((it) => ({ id: String(it.id), at: it.at, title: it.title, body: it.body, k: (it.data || {}).k || '', t: (it.data || {}).t || '' }));
         MctAlarm.schedule(JSON.stringify(doses));
       }
       for (const it of future) {
-        if (MctAlarm && !it.info) continue;
+        if (MctAlarm && isAlarm(it)) continue;
+        const withActions = isAlarm(it) || it.kind === 'dose';
         await Notifications.scheduleNotificationAsync({
           identifier: String(it.id).replace(/[^\w-]/g, '_'),
           content: {
             title: it.title,
             body: it.body,
             data: it.data || {},
-            categoryIdentifier: it.info ? undefined : CATEGORY,
-            sound: 'default',
-            priority: Notifications.AndroidNotificationPriority.MAX,
-            // La alarma de la toma no se puede deslizar: se queda hasta tocar Tomé o Posponer.
-            sticky: !it.info,
+            categoryIdentifier: withActions ? CATEGORY : undefined,
+            sound: it.channel === 'soft' ? undefined : 'default',
+            priority: it.channel === 'soft' ? Notifications.AndroidNotificationPriority.LOW : Notifications.AndroidNotificationPriority.MAX,
+            // Si la alarma va como notificación (sin módulo nativo), no se puede deslizar.
+            sticky: isAlarm(it),
           },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: it.at,
-            channelId: it.info ? CH_INFO : CH_DOSES,
-            delivery: it.info ? 'bestEffort' : 'alarmClock',
+            channelId: isAlarm(it) ? CH_DOSES : it.channel === 'soft' ? CH_SOFT : CH_INFO,
+            delivery: isAlarm(it) || it.kind === 'dose' ? 'alarmClock' : 'bestEffort',
           },
         });
       }
