@@ -1,4 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HhdcJaD2ukjc0orGu+dOBwQdq1T+rPXnyQizBoehNg8=' 'sha256-Fxb4dkVB1/svUfhTm6iISQxZmrrHzBBtAAtQtzf2Edo=' 'sha256-qGftvPsCk3Cu7HIj3WGAtWC2IfvjvGTGWE+wNp0be84=' 'sha256-otfifdWd3/qsB5pl+0KBwmrgpDiFxqX+KzdbBvzUWWw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://wbivucivzmudlwtbovjd.supabase.co; media-src 'self' blob: https://wbivucivzmudlwtbovjd.supabase.co; connect-src 'self' https://wbivucivzmudlwtbovjd.supabase.co wss://wbivucivzmudlwtbovjd.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0B7A68">
@@ -116,6 +117,8 @@ b{font-weight:700}
 .note svg{width:20px;height:20px;color:var(--warn);margin-top:1px}
 .note.info{background:var(--accent-soft)}
 .note.info svg{color:var(--accent)}
+.note.bad{background:color-mix(in srgb,var(--bad) 13%,var(--surface))}
+.note.bad svg{color:var(--bad)}
 
 .slot{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;scroll-margin-top:96px}
 .slot-h{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;background:color-mix(in srgb,var(--b) 10%,var(--surface))}
@@ -419,10 +422,21 @@ function scheduledOn(m,k){
   return true;
 }
 function nextOn(m,k){for(let i=1;i<=14;i++){const kk=dkey(addDays(parseKey(k),i));if(scheduledOn(m,kk))return {kk,i}}return null}
-const rec=(k,m,i)=>(day(k).doses||{})[gidOf(m)+'#'+i];
+/* Cada registro guarda la hora programada (sched). Así, si cambian los horarios, la toma marcada sigue en su hora. */
+const rec=(k,m,i)=>{const ds=day(k).doses||{}, g=gidOf(m)+'#', t=m.times[i], r=ds[g+i];if(r&&(!r.sched||r.sched===t))return r;for(const key in ds)if(key.startsWith(g)&&ds[key].sched===t)return ds[key];return undefined};
+function recKey(k,m,i){
+  const ds=(S.days[k]&&S.days[k].doses)||{}, g=gidOf(m)+'#', t=m.times[i], own=g+i, r=ds[own];
+  if(r&&(!r.sched||r.sched===t))return own;
+  for(const key in ds)if(key.startsWith(g)&&ds[key].sched===t)return key;
+  if(!r)return own;
+  let n=100;while(ds[g+n])n++;return g+n;
+}
+function putRec(d,k,m,i,val){d.doses=d.doses||{};const key=recKey(k,m,i);if(val)d.doses[key]={...val,sched:m.times[i]};else delete d.doses[key];return key}
+const hmRaw=m=>{m=Math.max(0,Math.min(1499,Math.round(m)));return pad(Math.floor(m/60))+':'+pad(m%60)};
+const snoozeUntil=k=>hmRaw(nowMin()+15+(k<todayKey()?1440:0));
 function slotStatus(k,m,i){
   const r=rec(k,m,i), s=toMin(m.times[i]), tk=todayKey(), tol=tolOf(m);
-  if(r&&r.s==='taken'){if(!r.at||r.nt)return{k:'ok',at:r.at||null,nt:true};const diff=toMin(r.at)-s;return{k:Math.abs(diff)>tol?'late':'ok',diff,at:r.at}}
+  if(r&&r.s==='taken'){if(!r.at||r.nt)return{k:'ok',at:r.at||null,nt:true};let diff=toMin(r.at)-s;if(diff<-720)diff+=1440;else if(diff>720)diff-=1440;return{k:Math.abs(diff)>tol?'late':'ok',diff,at:r.at}}
   if(r&&r.s==='skip')return{k:'skip',reason:r.reason};
   if(k<tk)return{k:'miss'};
   if(k>tk)return{k:'future'};
@@ -548,7 +562,7 @@ function recentAlerts(n=7){const out=[];for(let i=0;i<n;i++)out.push(...dayAlert
 function lastWith(f){const ks=dayKeys().filter(k=>S.days[k][f]!=null);const k=ks.pop();return k?{k,v:S.days[k][f]}:null}
 function lastPA(){const ks=dayKeys();for(let j=ks.length-1;j>=0;j--){const c=(S.days[ks[j]].ctrl||[]).filter(x=>x.pas!=null);if(c.length){const x=c[c.length-1];return{k:ks[j],...x}}}return null}
 function labSeries(key){return dayKeys().filter(k=>S.days[k].labs&&S.days[k].labs[key]!=null).map(k=>({k,v:S.days[k].labs[key]}))}
-const alertHTML=([lvl,t,m],when)=>`<div class="alert ${lvl}">${I.alert}<div><div class="t">${esc(t)}</div><div class="m">${when?`<span class="num">${when}</span> · `:''}${esc(m)}</div></div></div>`;
+const alertHTML=([lvl,t,m],when)=>`<div class="alert ${lvl}">${I.alert}<div><div class="t">${esc(t)}</div><div class="m">${when?`<span class="num">${esc(when)}</span> · `:''}${esc(m)}</div></div></div>`;
 
 /* ---------- datos: Supabase con caché local y cola de cambios sin conexión ---------- */
 const CFG=window.MCT_CONFIG||{};
@@ -558,12 +572,72 @@ const NATIVE=!!window.ReactNativeWebView;
 const TEAM=window.MCT_APP==='equipo';
 const K_LAST=TEAM?'mct-last-eq':'mct-last', K_THEME=TEAM?'mct-theme-eq':'mct-theme';
 if(TEAM)document.documentElement.classList.add('team');
-let installEvt=null;
+let installEvt=null, offlineLogin=false;
 const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 let sb=null, session=null, patientId=null, patientName='', role='patient', team=[], patients=[], outbox=[], flushing=false, localRev=0, authMode='in', authMsg='';
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const CK=()=>'mct-cache-'+patientId, OBK=()=>'mct-outbox-'+patientId;
 const cacheSave=()=>{if(patientId&&!DEMO)LS.set(CK(),{plan:S.plan,days:S.days,at:Date.now()})};
+/* ---------- validación: lo que llega del servidor o del caché se normaliza; nada mal formado llega a la pantalla ---------- */
+const RX_HM=/^([01]\d|2[0-3]):[0-5]\d$/, RX_ID=/^[A-Za-z0-9_-]{1,80}$/, RX_DAY=/^\d{4}-\d{2}-\d{2}$/;
+const okHM=v=>{if(typeof v!=='string')return null;const x=v.slice(0,5);return RX_HM.test(x)?x:null};
+const okUntil=v=>typeof v==='string'&&/^([01]\d|2[0-4]):[0-5]\d$/.test(v)?v:null;
+const okDay=v=>typeof v==='string'&&RX_DAY.test(v)?v:null;
+const okNum=v=>{if(v==null||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
+const okStr=(v,n=500)=>v==null?'':String(v).slice(0,n);
+function cleanV(m){
+  if(!m||typeof m!=='object')return null;
+  const id=String(m.id??''), gid=String(m.gid??m.id??'');
+  if(!RX_ID.test(id)||!RX_ID.test(gid))return null;
+  const times=Array.isArray(m.times)?[...new Set(m.times.map(okHM).filter(Boolean))]:[];
+  if(!times.length)return null;
+  const f=m.freq&&typeof m.freq==='object'?m.freq:{t:'d'};
+  let freq={t:'d'};
+  if(f.t==='alt')freq={t:'alt',start:okDay(f.start)||okDay(m.from)||todayKey()};
+  else if(f.t==='w'&&/^[0-6]$/.test(String(f.dow)))freq={t:'w',dow:Number(f.dow)};
+  let taper=null;const tp=m.taper;
+  if(tp&&typeof tp==='object'){const mg=okNum(tp.mg),n=okNum(tp.n),step=okNum(tp.step),every=okNum(tp.every),min=okNum(tp.min),date=okDay(tp.date);if(mg>0&&n>0&&step>0&&every>=1&&date)taper={date,mg,n:Math.round(n),step,every:Math.round(every),min}}
+  let win=null;if(m.win&&typeof m.win==='object'){const b=okNum(m.win.before),a=okNum(m.win.after);if(b!=null&&a!=null&&b>=0&&a>=0)win={before:Math.min(b,720),after:Math.min(a,720)}}
+  const tol=okNum(m.tol), qty=okNum(m.qty);
+  const out={id,gid,name:okStr(m.name,120)||'Medicamento',strength:okStr(m.strength,40),unit:okStr(m.unit,30)||'tableta',qty:qty!=null&&qty>0?qty:null,type:okStr(m.type,40)||'Otro',times,freq,note:okStr(m.note),strict:!!m.strict,taper,win,level:LEVELS[m.level]?m.level:null,tol:tol!=null&&tol>=0?Math.min(tol,1440):null,from:okDay(m.from)||''};
+  const until=okDay(m.until);if(until)out.until=until;
+  return out;
+}
+function cleanRec(r){
+  if(!r||typeof r!=='object'||!['taken','skip','snooze'].includes(r.s))return null;
+  const o={s:r.s}, at=okHM(r.at), u=okUntil(r.until), sc=okHM(r.sched);
+  if(at)o.at=at;if(u)o.until=u;if(sc)o.sched=sc;
+  const q=okNum(r.q),mg=okNum(r.mg),n=okNum(r.n);if(q!=null)o.q=q;if(mg!=null)o.mg=mg;if(n!=null)o.n=Math.round(n);
+  if(r.reason)o.reason=okStr(r.reason,200);if(r.nt)o.nt=true;
+  if(r.verif&&typeof r.verif==='object'){const v=r.verif, vo={kind:['photo','video','skipped'].includes(v.kind)?v.kind:'skipped'}, va=okHM(v.at);if(va)vo.at=va;if(typeof v.path==='string'&&/^[A-Za-z0-9\/._-]{1,200}$/.test(v.path)&&!v.path.includes('..'))vo.path=v.path;if(typeof v.up==='boolean')vo.up=v.up;o.verif=vo}
+  return o;
+}
+function cleanDay(d){
+  if(!d||typeof d!=='object')return null;
+  const o={};
+  if(d.doses&&typeof d.doses==='object'){const ds={};for(const [k,v] of Object.entries(d.doses)){const c=k.lastIndexOf('#');if(c<1||!RX_ID.test(k.slice(0,c))||!/^\d{1,3}$/.test(k.slice(c+1)))continue;const r=cleanRec(v);if(r)ds[k]=r}if(Object.keys(ds).length)o.doses=ds}
+  for(const f of ['peso','diu','agua','dren']){const x=okNum(d[f]);if(x!=null)o[f]=x}
+  if(Array.isArray(d.sint)){const x=d.sint.filter(v=>typeof v==='string').map(v=>v.slice(0,80)).slice(0,20);if(x.length)o.sint=x}
+  if(d.nota)o.nota=okStr(d.nota,2000);
+  if(Array.isArray(d.ctrl)){const c=d.ctrl.filter(x=>x&&typeof x==='object'&&RX_ID.test(String(x.id??''))).map(x=>{const r={id:String(x.id)}, t=okHM(x.t), pas=okNum(x.pas), pad_=okNum(x.pad), temp=okNum(x.temp);if(t)r.t=t;if(pas!=null&&pad_!=null){r.pas=pas;r.pad=pad_}if(temp!=null)r.temp=temp;return r});if(c.length)o.ctrl=c}
+  if(d.labs&&typeof d.labs==='object'){const l={};['tac','hb','urea','crea'].forEach(f=>{const x=okNum(d.labs[f]);if(x!=null)l[f]=x});if(Object.keys(l).length)o.labs=l}
+  return o;
+}
+function cleanState(st){
+  const p=st&&st.plan&&typeof st.plan==='object'?st.plan:null, vf=p&&p.verify&&typeof p.verify==='object'?p.verify:{};
+  const plan=p?{txDate:okDay(p.txDate)||'',labDate:okDay(p.labDate)||'',labTentative:!!p.labTentative,base:okDay(p.base)||'',verify:{mode:/^[a-z]{1,12}$/.test(vf.mode||'')?vf.mode:'off',scope:vf.scope==='all'?'all':'strict'},waterGoal:Math.max(500,Math.min(10000,okNum(p.waterGoal)||3000)),meds:(Array.isArray(p.meds)?p.meds:[]).map(cleanV).filter(Boolean)}:null;
+  const days={};
+  if(st&&st.days&&typeof st.days==='object')for(const [k,d] of Object.entries(st.days)){if(!RX_DAY.test(k))continue;const c=cleanDay(d);if(c)days[k]=c}
+  return {plan,days};
+}
+const fromCache=c=>c?cleanState(c):{plan:null,days:{}};
+/* Cola de cambios: solo operaciones bien formadas; las que el servidor rechaza quedan apartadas y visibles, nunca se borran en silencio */
+const OPT=['patients','med_versions','doses','days','readings','labs'];
+const validOp=o=>!!o&&typeof o==='object'&&['up','upd','del'].includes(o.t)&&OPT.includes(o.table)&&(o.t==='up'||(o.match&&typeof o.match==='object'))&&(o.t==='del'||(o.row&&typeof o.row==='object'));
+const loadOps=k=>{const o=LS.get(k);return Array.isArray(o)?o.filter(validOp):[]};
+const RJK=()=>'mct-rejected-'+patientId;
+let rejected=[];
+const loadRejected=()=>{const o=LS.get(RJK());rejected=Array.isArray(o)?o.filter(x=>x&&validOp(x.op)):[]};
 const toV=r=>({id:r.id,gid:r.gid,name:r.name,strength:r.strength,unit:r.unit,qty:r.qty==null?null:Number(r.qty),type:r.type,times:r.times,freq:r.freq,note:r.note,strict:r.strict,taper:r.taper,win:r.win||null,level:r.level||null,tol:r.tol==null?null:Number(r.tol),from:r.from_date,...(r.until_date?{until:r.until_date}:{})});
 const fromV=(v,pid)=>({patient_id:pid,id:v.id,gid:gidOf(v),name:v.name,strength:v.strength||'',unit:v.unit||'tableta',qty:v.qty??null,type:v.type||'Otro',times:v.times,freq:v.freq||{t:'d'},note:v.note||'',strict:!!v.strict,taper:v.taper||null,win:v.win||null,level:v.level||levelOf(v),tol:v.tol??tolOf(v),change_reason:pendingReason||null,from_date:v.from,until_date:v.until||null});
 let pendingReason=null;
@@ -583,31 +657,36 @@ async function loadPatient(pid){
 function assemble(p,mv,ds,dy,rd,lb){
   const plan={txDate:p&&p.tx_date||'',labDate:p&&p.lab_date||'',labTentative:!!(p&&p.lab_tentative),base:p&&p.base_date||'',verify:p&&p.verify||{mode:'off',scope:'strict'},waterGoal:p&&p.water_goal||3000,meds:mv.map(toV)};
   const days={}, D=k=>(days[k]=days[k]||{});
-  ds.forEach(r=>{const d=D(r.day);d.doses=d.doses||{};const o={s:r.status};if(r.at)o.at=r.at;if(r.until)o.until=r.until;if(r.qty!=null)o.q=Number(r.qty);if(r.mg!=null)o.mg=Number(r.mg);if(r.n!=null)o.n=r.n;if(r.reason)o.reason=r.reason;if(r.nt)o.nt=true;if(r.verif)o.verif=r.verif;d.doses[r.med_gid+'#'+r.idx]=o});
+  ds.forEach(r=>{const d=D(r.day);d.doses=d.doses||{};const o={s:r.status};if(r.at)o.at=r.at;if(r.until)o.until=r.until;if(r.qty!=null)o.q=Number(r.qty);if(r.mg!=null)o.mg=Number(r.mg);if(r.n!=null)o.n=r.n;if(r.reason)o.reason=r.reason;if(r.nt)o.nt=true;if(r.verif)o.verif=r.verif;if(r.sched)o.sched=r.sched;d.doses[r.med_gid+'#'+r.idx]=o});
   dy.forEach(r=>{const d=D(r.day);if(r.peso!=null)d.peso=Number(r.peso);if(r.diu!=null)d.diu=r.diu;if(r.agua!=null)d.agua=r.agua;if(r.dren!=null)d.dren=r.dren;if(r.sint&&r.sint.length)d.sint=r.sint;if(r.nota)d.nota=r.nota});
   rd.forEach(r=>{const d=D(r.day);(d.ctrl=d.ctrl||[]).push({id:r.id,t:r.t,...(r.pas!=null?{pas:r.pas,pad:r.pad}:{}),...(r.temp!=null?{temp:Number(r.temp)}:{})})});
   lb.forEach(r=>{const o={};['tac','hb','urea','crea'].forEach(f=>{if(r[f]!=null)o[f]=Number(r[f])});if(Object.keys(o).length)D(r.day).labs=o});
-  return {plan,days};
+  return cleanState({plan,days});
 }
+const intOrNull=v=>v==null||v===''||!Number.isFinite(Number(v))?null:Math.round(Number(v));
 function dayOps(k,d,prev,pid){
   const ops=[], dd=d.doses||{}, pd=prev.doses||{};
   for(const key of new Set([...Object.keys(dd),...Object.keys(pd)])){
     const cut=key.lastIndexOf('#'), gid=key.slice(0,cut), idx=Number(key.slice(cut+1)), a=dd[key];
     if(!a){ops.push({t:'del',table:'doses',match:{patient_id:pid,day:k,med_gid:gid,idx}});continue}
     if(JSON.stringify(a)===JSON.stringify(pd[key]))continue;
-    ops.push({t:'up',table:'doses',row:{patient_id:pid,day:k,med_gid:gid,idx,status:a.s,at:a.at||null,until:a.until||null,qty:a.q??null,mg:a.mg??null,n:a.n??null,reason:a.reason||null,nt:!!a.nt,verif:a.verif||null}});
+    ops.push({t:'up',table:'doses',row:{patient_id:pid,day:k,med_gid:gid,idx,status:a.s,at:a.at||null,until:a.until||null,qty:a.q??null,mg:a.mg??null,n:a.n??null,reason:a.reason||null,nt:!!a.nt,verif:a.verif||null,sched:a.sched||null}});
   }
   const dayF=x=>JSON.stringify([x.peso??null,x.diu??null,x.dren??null,x.agua??null,x.sint||[],x.nota||'']);
-  if(dayF(d)!==dayF(prev))ops.push({t:'up',table:'days',row:{patient_id:pid,day:k,peso:d.peso??null,diu:d.diu??null,dren:d.dren??null,agua:d.agua??null,sint:d.sint||[],nota:d.nota||''}});
+  if(dayF(d)!==dayF(prev))ops.push({t:'up',table:'days',row:{patient_id:pid,day:k,peso:d.peso??null,diu:intOrNull(d.diu),dren:intOrNull(d.dren),agua:intOrNull(d.agua),sint:d.sint||[],nota:d.nota||''}});
   const cr=d.ctrl||[], pr=prev.ctrl||[];
-  cr.forEach(c=>{const o=pr.find(x=>x.id===c.id);if(!o||JSON.stringify(o)!==JSON.stringify(c))ops.push({t:'up',table:'readings',row:{patient_id:pid,id:c.id,day:k,t:c.t||null,pas:c.pas??null,pad:c.pad??null,temp:c.temp??null}})});
+  cr.forEach(c=>{const o=pr.find(x=>x.id===c.id);if(!o||JSON.stringify(o)!==JSON.stringify(c))ops.push({t:'up',table:'readings',row:{patient_id:pid,id:c.id,day:k,t:c.t||null,pas:intOrNull(c.pas),pad:intOrNull(c.pad),temp:c.temp??null}})});
   pr.forEach(o=>{if(!cr.some(c=>c.id===o.id))ops.push({t:'del',table:'readings',match:{patient_id:pid,id:o.id}})});
   if(JSON.stringify(d.labs||{})!==JSON.stringify(prev.labs||{})){const l=d.labs||{};ops.push(Object.keys(l).length?{t:'up',table:'labs',row:{patient_id:pid,day:k,tac:l.tac??null,hb:l.hb??null,urea:l.urea??null,crea:l.crea??null}}:{t:'del',table:'labs',match:{patient_id:pid,day:k}})}
   return ops;
 }
+const prowOf=p=>({tx_date:p.txDate||null,lab_date:p.labDate||null,lab_tentative:!!p.labTentative,base_date:p.base||null,verify:p.verify||{mode:'off',scope:'strict'},water_goal:p.waterGoal||3000});
 function planOps(p,prev,pid){
-  const prow={id:pid,tx_date:p.txDate||null,lab_date:p.labDate||null,lab_tentative:!!p.labTentative,base_date:p.base||todayKey(),verify:p.verify||{mode:'off',scope:'strict'},water_goal:p.waterGoal||3000};
-  const ops=[pid===(session&&session.user.id)?{t:'up',table:'patients',row:prow}:{t:'upd',table:'patients',row:prow,match:{id:pid}}];
+  const a=prowOf(p), b=prowOf(prev||{}), ch={};
+  for(const f in a)if(JSON.stringify(a[f])!==JSON.stringify(b[f]))ch[f]=a[f];
+  if('base_date' in ch&&!ch.base_date)delete ch.base_date;
+  const ops=[];
+  if(Object.keys(ch).length)ops.push(pid===(session&&session.user.id)?{t:'up',table:'patients',row:{id:pid,...ch}}:{t:'upd',table:'patients',row:ch,match:{id:pid}});
   const pm=prev.meds||[];
   p.meds.forEach(v=>{const o=pm.find(x=>x.id===v.id);if(!o||JSON.stringify(o)!==JSON.stringify(v))ops.push({t:'up',table:'med_versions',row:fromV(v,pid)})});
   pm.forEach(o=>{if(!p.meds.some(v=>v.id===o.id))ops.push({t:'del',table:'med_versions',match:{patient_id:pid,id:o.id}})});
@@ -617,16 +696,31 @@ const isNetErr=e=>!e||!e.code||/fetch|network|load failed|timeout/i.test(e.messa
 function enqueue(ops){if(DEMO||!ops.length)return;localRev++;outbox.push(...ops);LS.set(OBK(),outbox);cacheSave();flush()}
 async function flush(){
   if(flushing||!sb||!outbox.length)return;
-  flushing=true;
+  flushing=true;let renewed=false;const rj0=rejected.length;
   try{
     while(outbox.length){
       const op=outbox[0];
-      const {error}=op.t==='up'?await sb.from(op.table).upsert(op.row):op.t==='upd'?await sb.from(op.table).update(op.row).match(op.match):await sb.from(op.table).delete().match(op.match);
-      if(error){if(isNetErr(error))break;console.warn(op,error);toast('No se pudo guardar un cambio. Revisa los datos e inténtalo otra vez.')}
+      if(!validOp(op)){outbox.shift();LS.set(OBK(),outbox);continue}
+      let res;
+      try{res=op.t==='up'?await sb.from(op.table).upsert(op.row):op.t==='upd'?await sb.from(op.table).update(op.row).match(op.match):await sb.from(op.table).delete().match(op.match)}catch(e){break}
+      const error=res&&res.error, status=res&&res.status||0;
+      if(error){
+        const code=error.code||'';
+        // Pasajero (sin señal, servidor caído o saturado): se queda en la cola y se reintenta
+        if(isNetErr(error)||status>=500||status===429||status===408||code==='PGRST002'||code==='57014')break;
+        // Sesión vencida: se renueva una vez y se reintenta la misma operación
+        if(status===401||status===403||/^PGRST30/.test(code)||code==='42501'||/jwt/i.test(error.message||'')){
+          if(!renewed){renewed=true;let r=null;try{r=await sb.auth.refreshSession()}catch(e){}if(r&&r.data&&r.data.session){session=r.data.session;continue}break}
+          if(code!=='42501')break;
+        }
+        // Rechazo definitivo: se aparta y se avisa; nunca se pierde en silencio
+        console.warn(op,error);rejected.push({op,at:Date.now(),msg:okStr(error.message||code,200)});LS.set(RJK(),rejected);
+        toast('Un cambio no se pudo guardar. Míralo en el aviso de arriba.');
+      }
       outbox.shift();LS.set(OBK(),outbox);
     }
-  }catch(e){}
-  flushing=false;renderTop();
+  }catch(e){console.warn('flush',e)}
+  flushing=false;if(rejected.length!==rj0)safeRender();else renderTop();
   uploadPending();
 }
 window.addEventListener('online',()=>{flush();refresh()});
@@ -733,11 +827,14 @@ function appearanceHTML(){
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTheme());
 
 /* ---------- puente con la app de Android (alarmas nativas) ---------- */
-let schedHash='', pendingAction=null, afterT;
+let schedPrev=[], pendingActions=[], afterT, confirmKey=null, confirmAt=0;
 const afterChange=()=>{cacheSave();clearTimeout(afterT);afterT=setTimeout(syncNative,80)};
+/* Alarmas de 7 días (si no abres la app, siguen sonando). Hoy y mañana con todas las repeticiones; del día 3 en adelante,
+   la alarma y su primera repetición. Si hay demasiadas, se recorta primero lo menos importante, nunca la alarma principal. */
+const HORIZON=7, MAX_ITEMS=320;
 function buildSchedule(){
   const items=[], now=Date.now();
-  for(let d=0;d<3;d++){
+  for(let d=-1;d<HORIZON;d++){
     const k=dkey(addDays(today0(),d)), groups={};
     slotsFor(k).forEach(s=>{if(!isDone(s.st.k))(groups[s.time]=groups[s.time]||[]).push(s)});
     for(const [t,list] of Object.entries(groups)){
@@ -746,53 +843,60 @@ function buildSchedule(){
       const body=list.map(s=>`${s.med.name}: ${doseText(s.med,k)}`).join('\n');
       const lvl=list.map(s=>levelOf(s.med)).sort((a,b)=>LV_RANK[b]-LV_RANK[a])[0], flex=lvl==='flexible';
       // Aviso 10 minutos antes (suave para los flexibles)
-      if(!sn){const w=base.getTime()-10*60000;if(w>now)items.push({id:`${k}|${t}|pre`,at:w,title:`En 10 minutos · ${t}`,body,data:{k,t},kind:'pre',info:true,channel:flex?'soft':'info'})}
+      if(!sn){const w=base.getTime()-10*60000;if(w>now)items.push({id:`${k}|${t}|pre`,at:w,pr:2,title:`En 10 minutos · ${t}`,body,data:{k,t},kind:'pre',info:true,channel:flex?'soft':'info'})}
       // A la hora: alarma (críticos y profilácticos) o notificación (flexibles), con repeticiones según el nivel
-      LEVELS[lvl].rep.forEach((off,j)=>{const w=base.getTime()+off*60000;if(w>now)items.push({id:`${k}|${t}|${j}`,at:w,title:j?`Recuerda tus medicamentos de las ${t}`:`${lvl==='critical'?'Crítico · ':''}Es hora · ${t}`,body,data:{k,t},kind:flex?'dose':'alarm',info:flex})});
+      LEVELS[lvl].rep.forEach((off,j)=>{if(d>=2&&j>1)return;const w=base.getTime()+off*60000;if(w>now)items.push({pr:j===0?0:j===1?1:3,id:`${k}|${t}|${j}`,at:w,title:j?`Recuerda tus medicamentos de las ${t}`:`${lvl==='critical'?'Crítico · ':''}Es hora · ${t}`,body,data:{k,t},kind:flex?'dose':'alarm',info:flex})});
     }
   }
-  for(let d=0;d<3;d++){
+  for(let d=0;d<HORIZON;d++){
     const k=dkey(addDays(today0(),d)), base=parseKey(k).getTime();
     windowsFor(k).forEach(w=>{
       if(w.skip)return;
-      const at=m=>base+m*60000, nm=w.med.name, key=`${k}|${w.time}|win`;
+      const at=m=>base+m*60000, nm=w.med.name, key=`${k}|${w.time}|win|${gidOf(w.med)}`;
       if(w.took==null){
-        if(at(w.start)>now&&w.start<w.take)items.push({id:key+'0',at:at(w.start),title:`Empieza la ventana del ${nm}`,body:`Desde ahora no comas ni tomes otras pastillas. ${nm} a las ${w.time}; la ventana termina ${w.after} min después de tomarlo.`,data:{k,t:w.time},info:true});
-      }else if(at(w.end)>now)items.push({id:key+'end',at:at(w.end),title:`Ventana del ${nm} cerrada`,body:'Ya puedes comer y tomar tus otras pastillas.',data:{k,t:w.time},info:true});
+        if(at(w.start)>now&&w.start<w.take)items.push({id:key+'0',at:at(w.start),pr:2,title:`Empieza la ventana del ${nm}`,body:`Desde ahora no comas ni tomes otras pastillas. ${nm} a las ${w.time}; la ventana termina ${w.after} min después de tomarlo.`,data:{k,t:w.time},info:true});
+      }else if(at(w.end)>now)items.push({id:key+'end',at:at(w.end),pr:2,title:`Ventana del ${nm} cerrada`,body:'Ya puedes comer y tomar tus otras pastillas.',data:{k,t:w.time},info:true});
     });
   }
   // Controles diarios: peso en ayunas y diuresis 24 h a las 07:00, agua cada 2 h, presión a las 18:00 si falta.
   const goal=(S.plan&&S.plan.waterGoal)||3000;
-  for(let d=0;d<3;d++){
+  for(let d=0;d<2;d++){
     const k=dkey(addDays(today0(),d)), dd=day(k), at=(h,m=0)=>{const x=parseKey(k);x.setHours(h,m,0,0);return x.getTime()};
-    if((dd.peso==null||dd.diu==null)&&at(7)>now)items.push({id:`${k}|ctl|am`,at:at(7),title:'Controles de la mañana',body:`${dd.peso==null?'Pésate en ayunas':''}${dd.peso==null&&dd.diu==null?' y ':''}${dd.diu==null?'anota tu diuresis de 24 h':''}.`,data:{k,ctl:1},info:true,channel:'info'});
+    if((dd.peso==null||dd.diu==null)&&at(7)>now)items.push({id:`${k}|ctl|am`,at:at(7),pr:4,title:'Controles de la mañana',body:`${dd.peso==null?'Pésate en ayunas':''}${dd.peso==null&&dd.diu==null?' y ':''}${dd.diu==null?'anota tu diuresis de 24 h':''}.`,data:{k,ctl:1},info:true,channel:'info'});
     const drank=dd.agua||0;
-    if(drank<goal)for(let h=8;h<=20;h+=2){if(at(h)>now)items.push({id:`${k}|agua|${h}`,at:at(h),title:'Toma agua',body:`Llevas ${fmtL(drank)} de ${fmtL(goal)} hoy.`,data:{k,ctl:1},info:true,channel:'info'})}
-    if(!(dd.ctrl||[]).some(c=>c.pas!=null)&&at(18)>now)items.push({id:`${k}|pa`,at:at(18),title:'Mide tu presión',body:'Todavía no anotas tu presión de hoy.',data:{k,ctl:1},info:true,channel:'info'});
+    if(drank<goal)for(let h=8;h<=20;h+=2){if(at(h)>now)items.push({id:`${k}|agua|${h}`,at:at(h),pr:5,title:'Toma agua',body:`Llevas ${fmtL(drank)} de ${fmtL(goal)} hoy.`,data:{k,ctl:1},info:true,channel:'info'})}
+    if(!(dd.ctrl||[]).some(c=>c.pas!=null)&&at(18)>now)items.push({id:`${k}|pa`,at:at(18),pr:4,title:'Mide tu presión',body:'Todavía no anotas tu presión de hoy.',data:{k,ctl:1},info:true,channel:'info'});
   }
   if(S.plan&&S.plan.labDate){
     const w=addDays(parseKey(S.plan.labDate),-1);w.setHours(20,30,0,0);const tm=tacroMed();
-    if(w.getTime()>now)items.push({id:'lab|'+S.plan.labDate,at:w.getTime(),title:`Mañana: dosaje de tacrolimus${S.plan.labTentative?' (por confirmar)':''}`,body:`No tomes ${tm?'la dosis de las '+tm.times[0]:'la dosis de la mañana'} antes de la muestra de sangre. Lleva tus cápsulas.`,data:{lab:1},info:true});
+    if(w.getTime()>now)items.push({id:'lab|'+S.plan.labDate,at:w.getTime(),pr:1,title:`Mañana: dosaje de tacrolimus${S.plan.labTentative?' (por confirmar)':''}`,body:`No tomes ${tm?'la dosis de las '+tm.times[0]:'la dosis de la mañana'} antes de la muestra de sangre. Lleva tus cápsulas.`,data:{lab:1},info:true});
   }
-  return items.sort((a,b)=>a.at-b.at).slice(0,240);
+  const seen=new Set();
+  return items.filter(x=>!seen.has(x.id)&&seen.add(x.id)).sort((a,b)=>(a.pr-b.pr)||(a.at-b.at)).slice(0,MAX_ITEMS).sort((a,b)=>a.at-b.at).map(({pr,...x})=>x);
 }
 function syncNative(){
-  if(!NATIVE||phase!=='ready'||!canWrite)return;
-  const items=buildSchedule(), h=JSON.stringify(items);
-  if(h===schedHash)return;schedHash=h;
+  if(!NATIVE||phase!=='ready'||!canWrite||mode!=='patient')return;
+  let items;try{items=buildSchedule()}catch(e){console.warn('schedule',e);return}
+  // Si solo pasaron alarmas ya sonadas, no hace falta reprogramar (ahorra batería)
+  const now=Date.now();if(JSON.stringify(items)===JSON.stringify(schedPrev.filter(x=>x.at>now)))return;
+  schedPrev=items;
   try{window.ReactNativeWebView.postMessage(JSON.stringify({type:'schedule',items}))}catch(e){}
 }
 window.mctNativeAction=function(a){
-  if(mode!=='patient'&&hasOwn&&session){pendingAction=a;backToOwn();return}
-  if(phase!=='ready'||!canWrite){pendingAction=a;return}
-  if(!a||!a.k||!a.t)return;
-  const list=slotsFor(a.k).filter(s=>s.time===a.t&&!isDone(s.st.k));
+  if(!a||typeof a!=='object'||!['taken','snooze','open'].includes(a.action)||!okDay(a.k)||!okHM(a.t))return;
+  if(mode!=='patient'&&hasOwn&&session){pendingActions.push(a);backToOwn();return}
+  if(phase!=='ready'||!canWrite){pendingActions.push(a);return}
   tab='hoy';
+  if(a.k>todayKey()||(a.k===todayKey()&&toMin(a.t)-nowMin()>60)){render();return}   // nunca marca tomas que faltan más de 1 h
+  const list=slotsFor(a.k).filter(s=>s.time===a.t&&!isDone(s.st.k));
   if(!list.length){render();return}
-  if(a.action==='taken'){const at=nowHHMM();saveDay(a.k,d=>{d.doses=d.doses||{};list.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'taken',at,...defAmt(s.med,a.k)}})});toast(`Registrado a las ${at}: ${uniqNames(list)}`);startVerify(a.k,list)}
-  else if(a.action==='snooze'){const until=fromMin(nowMin()+15);saveDay(a.k,d=>{d.doses=d.doses||{};list.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'snooze',until}})});toast(`Te recordamos a las ${until}`)}
+  // Hora real en que se tocó "Tomé" en la alarma (aunque la app se abra después)
+  const ts=Number(a.ts), when=Number.isFinite(ts)&&ts>0&&ts<=Date.now()&&Date.now()-ts<18*3600e3?new Date(ts):new Date(), at=pad(when.getHours())+':'+pad(when.getMinutes());
+  if(a.action==='taken'){saveDay(a.k,d=>{list.forEach(s=>{putRec(d,a.k,s.med,s.i,{s:'taken',at,...defAmt(s.med,a.k)})})});toast(`Registrado a las ${at}: ${uniqNames(list)}`);startVerify(a.k,list)}
+  else if(a.action==='snooze'){const until=snoozeUntil(a.k);saveDay(a.k,d=>{list.forEach(s=>{putRec(d,a.k,s.med,s.i,{s:'snooze',until})})});toast(`Te recordamos a las ${fromMin(toMin(until))}`)}
   else render();
 };
+function runPendingActions(){const q=pendingActions;pendingActions=[];q.forEach(x=>{try{window.mctNativeAction(x)}catch(e){console.warn('action',e)}})}
 const nativePost=m=>{try{window.ReactNativeWebView.postMessage(JSON.stringify(m))}catch(e){}};
 
 /* ---------- verificación de tomas: versión A (foto) o B (video de 5 s), siempre en vivo ---------- */
@@ -925,7 +1029,7 @@ async function camSend(){
   const at=`${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
   if(DEMO)demoBlobs[path]=cam.url;
   else{try{await idb.put(path,{blob,type:blob.type||'image/jpeg',k})}catch(e){}}
-  saveDay(k,dd=>{dd.doses=dd.doses||{};list.forEach(s=>{const key=gidOf(s.med)+'#'+s.i;if(dd.doses[key])dd.doses[key].verif={kind,path,at,up:DEMO}})});
+  saveDay(k,dd=>{dd.doses=dd.doses||{};list.forEach(s=>{const key=recKey(k,s.med,s.i);if(dd.doses[key])dd.doses[key].verif={kind,path,at,up:DEMO}})});
   if(!DEMO)cam.url=null;
   stopCam();
   toast(kind==='photo'?'Foto guardada con tu toma':'Video guardado con tu toma');
@@ -934,7 +1038,7 @@ async function camSend(){
 function camSkip(){
   if(!cam)return;
   const {k,list,state}=cam;
-  if(state!=='error')saveDay(k,dd=>{dd.doses=dd.doses||{};list.forEach(s=>{const key=gidOf(s.med)+'#'+s.i;if(dd.doses[key]&&!dd.doses[key].verif)dd.doses[key].verif={kind:'skipped',at:nowHHMM()}})});
+  if(state!=='error')saveDay(k,dd=>{dd.doses=dd.doses||{};list.forEach(s=>{const key=recKey(k,s.med,s.i);if(dd.doses[key]&&!dd.doses[key].verif)dd.doses[key].verif={kind:'skipped',at:nowHHMM()}})});
   stopCam();
 }
 // Muestra la foto o el video guardado dentro de la hoja de la toma.
@@ -995,7 +1099,7 @@ function viewPanel(){
       <span class="pc-k num">${r.dn!=null?`Día ${r.dn}`:'—'} · Adherencia ${r.pct??'—'}% · Puntualidad críticos ${r.punct??'—'}%</span>
       <span class="pc-l">Tacrolimus ${r.tac.last?`<b class="num">${fmtNum(r.tac.last.v)}</b> ng/mL (${fmtShort(r.tac.last.k)})`:'—'} · Creatinina ${r.crea.last?`<b class="num">${fmtNum(r.crea.last.v)}</b>${ar(r.crea)}`:'—'}</span>
       ${r.alerts.length?`<span class="pc-a">${r.alerts.slice(0,2).map(x=>esc(x.a[1])).join(' · ')}</span>`:''}
-      <span class="pc-n">Última toma registrada: ${last}</span>
+      <span class="pc-n">Última toma registrada: ${esc(last)}</span>
     </button>`;
   }).join('');
   return `<div class="sec-h"><h2>Pacientes</h2><span class="lab">${panelRows.length} · actualizado <span class="num">${panelAt?fromMin(panelAt.getHours()*60+panelAt.getMinutes()):''}</span></span></div>
@@ -1012,15 +1116,15 @@ function openPanel(){
 function openFromPanel(id){
   const r=(panelRows||[]).find(x=>x.id===id);if(!r)return;
   mode='view';patientId=id;patientName=r.name;canWrite=false;canEditPlan=staffRole==='doctor';outbox=[];
-  const c=LS.get(CK());S=c?{plan:c.plan,days:c.days||{}}:{plan:null,days:{}};
+  S=fromCache(LS.get(CK()));loadRejected();const c=S.plan||Object.keys(S.days).length;
   phase=c?'ready':'loading';tab='equipo';location.hash='equipo';render();refresh();
 }
 async function backToOwn(){
   mode='patient';patientId=session.user.id;patientName='';canWrite=true;canEditPlan=true;
-  outbox=LS.get(OBK())||[];const c=LS.get(CK());S=c?{plan:c.plan,days:c.days||{}}:{plan:null,days:{}};
+  outbox=loadOps(OBK());loadRejected();S=fromCache(LS.get(CK()));const c=S.plan||Object.keys(S.days).length;
   phase=c?'ready':'loading';tab='hoy';location.hash='hoy';render();
   await refresh();
-  if(pendingAction){const a=pendingAction;pendingAction=null;window.mctNativeAction(a)}
+  runPendingActions();
 }
 
 /* ---------- huella de cambios (la escribe la base de datos) ---------- */
@@ -1065,7 +1169,7 @@ function auditText(e){
 async function fillAudit(){
   const box=document.getElementById('audit-list');if(!box||!sb||!patientId)return;
   const pid=patientId, c=auditCache[pid];
-  const draw=list=>{if(!box.isConnected)return;box.innerHTML=list.length?`<div class="ev">${list.map(e=>{const d=new Date(e.at);return `<span class="when">${fmtShort(dkey(d))} ${fromMin(d.getHours()*60+d.getMinutes())}</span><span>${esc(auditText(e))}<br><small class="med-note">${esc(e.actor_name||'')}${e.actor_name?' · ':''}${ROLE_LABEL[e.actor_role]||e.actor_role}${e.reason?' · Motivo: '+esc(e.reason):''}</small></span>`}).join('')}</div>`:'<p class="empty-s">Sin cambios registrados todavía.</p>'};
+  const draw=list=>{if(!box.isConnected)return;box.innerHTML=list.length?`<div class="ev">${list.map(e=>{const d=new Date(e.at);return `<span class="when">${fmtShort(dkey(d))} ${fromMin(d.getHours()*60+d.getMinutes())}</span><span>${esc(auditText(e))}<br><small class="med-note">${esc(e.actor_name||'')}${e.actor_name?' · ':''}${ROLE_LABEL[e.actor_role]||esc(e.actor_role)}${e.reason?' · Motivo: '+esc(e.reason):''}</small></span>`}).join('')}</div>`:'<p class="empty-s">Sin cambios registrados todavía.</p>'};
   if(c)draw(c.list);
   if(c&&Date.now()-c.t<60000)return;
   const {data,error}=await sb.from('audit_log').select('*').eq('patient_id',pid).order('at',{ascending:false}).limit(40);
@@ -1183,6 +1287,13 @@ function installHTML(){
   </div>`;
 }
 function render(){
+  try{renderMain()}
+  catch(e){
+    console.error('render',e);
+    view.innerHTML=`<div class="card"><h2>Algo salió mal al mostrar ${TEAM&&mode!=='view'?'el panel':'tus datos'}</h2><p class="sub">Lo que ya registraste no se pierde. Toca Reintentar; si sigue igual, borra la copia guardada en este equipo (se vuelve a bajar del servidor).</p><button class="btn primary" data-act="crash-reload">Reintentar</button><button class="btn ghost" data-act="crash-reset">Borrar copia local y recargar</button></div>`;
+  }
+}
+function renderMain(){
   document.documentElement.dataset.phase=phase;
   renderTop();renderTabs();
   if(phase==='noaccess'){view.innerHTML=viewNoAccess();return}
@@ -1194,7 +1305,8 @@ function render(){
   if(phase==='loading'&&TEAM&&!patientId){view.innerHTML=`<div class="card"><h2>Abriendo el panel</h2><p class="sub">${stale?'La conexión está tardando. Revisa tu internet.':'Cargando pacientes.'}</p></div>`;return}
   if(phase==='loading'){view.innerHTML=`<div class="card"><h2>Abriendo tu cuaderno</h2><p class="sub">${stale?'La conexión está tardando. Revisa tu internet; seguimos intentando.':'Cargando tus medicamentos, controles y análisis.'}</p></div>`;return}
   const staleNote=stale?`<div class="note">${I.alert}<div>Sin conexión con tu cuaderno. Lo que ves puede no estar actualizado.</div></div>`:'';
-  view.innerHTML=staleNote+(tab==='hoy'?viewHoy():tab==='controles'?viewControles():tab==='analisis'?viewAnalisis():tab==='historial'?viewHistorial():viewEquipo());
+  const rejNote=rejected.length?`<div class="note bad">${I.alert}<div><b>${rejected.length===1?'Un cambio no se pudo guardar':rejected.length+' cambios no se pudieron guardar'}.</b> ${esc(rejected[rejected.length-1].msg||'')}<div class="row2" style="margin-top:8px"><button class="btn small" data-act="rej-retry">Reintentar</button><button class="btn small ghost" data-act="rej-drop">Descartar</button></div></div></div>`:'';
+  view.innerHTML=staleNote+rejNote+(tab==='hoy'?viewHoy():tab==='controles'?viewControles():tab==='analisis'?viewAnalisis():tab==='historial'?viewHistorial():viewEquipo());
   if(tab==='analisis')drawChart();
   if(tab==='equipo')fillAudit();
   pendingRender=false;
@@ -1210,11 +1322,11 @@ const fmtL=ml=>`${fmtNum(Math.round(ml/100)/10)} L`;
 const uniqNames=l=>[...new Set(l.map(s=>s.med.name))].join(' · ');
 function chipFor(st){
   switch(st.k){
-    case 'ok':return `<span class="chip ok">${st.at||'Tomada'}</span>`;
-    case 'late':return `<span class="chip warn">${st.at} · ${st.diff>0?fmtDur(st.diff)+' tarde':fmtDur(-st.diff)+' antes'}</span>`;
+    case 'ok':return `<span class="chip ok">${esc(st.at)||'Tomada'}</span>`;
+    case 'late':return `<span class="chip warn">${esc(st.at)} · ${st.diff>0?fmtDur(st.diff)+' tarde':fmtDur(-st.diff)+' antes'}</span>`;
     case 'skip':return `<span class="chip neutral">No tomada</span>`;
     case 'due':return `<span class="chip due"><i class="pulse"></i>Ahora</span>`;
-    case 'snooze':return `<span class="chip warn">${I.bell}${st.until}</span>`;
+    case 'snooze':return `<span class="chip warn">${I.bell}${esc(fromMin(toMin(st.until)))}</span>`;
     case 'overdue':return `<span class="chip bad">Atrasada ${fmtDur(st.mins)}</span>`;
     case 'miss':return `<span class="chip bad">Sin registro</span>`;
     default:return `<span class="chip neutral">Pendiente</span>`;
@@ -1604,7 +1716,7 @@ function armed(b,label){
 }
 const showErr=(id,msg)=>{const el=document.getElementById(id);el.textContent=msg;el.hidden=false};
 const numIn=id=>{const el=document.getElementById(id);const raw=el?el.value.trim().replace(',','.'):'';if(!raw)return null;if(/^\d+\/\d+$/.test(raw)){const [a,b]=raw.split('/').map(Number);return b?a/b:NaN}const x=Number(raw);return Number.isFinite(x)?x:NaN};
-const setDose=(k,m,i,val)=>{saveDay(k,d=>{d.doses=d.doses||{};const key=gidOf(m)+'#'+i;if(val)d.doses[key]=val;else delete d.doses[key]});if(val)nativePost({type:'stopAlarm'})};
+const setDose=(k,m,i,val)=>{saveDay(k,d=>{putRec(d,k,m,i,val)});if(val)nativePost({type:'stopAlarm'})};
 const defAmt=(m,k)=>{const tp=taperFor(m,k);return tp?(tp.mg!=null?{mg:tp.mg,n:tp.count||null}:{}):(m.qty!=null?{q:m.qty}:{})};
 function readAmt(m,k){
   if(m.taper){
@@ -1633,13 +1745,14 @@ document.addEventListener('click',e=>{
       if(!canWrite||!m)break;
       const st=slotStatus(k,m,+b.dataset.i);
       if(isDone(st.k)){openDose(gidOf(m),b.dataset.i,k);break}
+      if(st.k==='future'||(st.k==='pending'&&st.inMin>60)){const key=k+'|'+gidOf(m)+'|'+b.dataset.i;if(confirmKey!==key||Date.now()-confirmAt>6000){confirmKey=key;confirmAt=Date.now();toast(`Esta toma es para las ${m.times[+b.dataset.i]}${k!==todayKey()?' de '+fmtShort(k):''}. Toca otra vez para marcarla ahora.`);break}confirmKey=null}
       const at=nowHHMM();setDose(k,m,+b.dataset.i,{s:'taken',at,...defAmt(m,k)});toast(`${m.name}: registrada a las ${at}`);
       startVerify(k,[{med:m,i:+b.dataset.i,time:m.times[+b.dataset.i]}]);break;
     }
     case 'open':if(m)openDose(gidOf(m),b.dataset.i,k);break;
     case 'take-group':{
       const at=nowHHMM(), tk=todayKey(), todo=slotsFor(tk).filter(s=>s.time===t&&!isDone(s.st.k));
-      saveDay(tk,d=>{d.doses=d.doses||{};todo.forEach(s=>{d.doses[gidOf(s.med)+'#'+s.i]={s:'taken',at,...defAmt(s.med,tk)}})});
+      saveDay(tk,d=>{todo.forEach(s=>{putRec(d,tk,s.med,s.i,{s:'taken',at,...defAmt(s.med,tk)})})});
       nativePost({type:'stopAlarm'});
       toast(`${todo.length} medicamento${todo.length>1?'s':''} de las ${t} registrado${todo.length>1?'s':''}`);
       startVerify(tk,todo);break;
@@ -1655,7 +1768,7 @@ document.addEventListener('click',e=>{
       toast(`${cm.name}: registrada a las ${at}${am.plan?' · tu plan se actualizó':''}`);const vk=cur.k,vi=cur.i;sheet.close();
       startVerify(vk,[{med:cm,i:vi,time:cm.times[vi]}]);break;
     }
-    case 'd-snooze':{const until=fromMin(nowMin()+15);setDose(cur.k,cm,cur.i,{s:'snooze',until});toast(`Te recordamos ${cm.name} a las ${until}`);sheet.close();break}
+    case 'd-snooze':{const until=snoozeUntil(cur.k);setDose(cur.k,cm,cur.i,{s:'snooze',until});toast(`Te recordamos ${cm.name} a las ${fromMin(toMin(until))}`);sheet.close();break}
     case 'd-skip':{const r=sheetIn.querySelector('input[name="reason"]:checked');setDose(cur.k,cm,cur.i,{s:'skip',reason:r?r.value:REASONS[0]});toast(`${cm.name}: anotada como no tomada`);sheet.close();break}
     case 'd-undo':setDose(cur.k,cm,cur.i,null);toast('Registro borrado');sheet.close();break;
     case 'sym':b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');break;
@@ -1681,7 +1794,8 @@ document.addEventListener('click',e=>{
     case 'logout':
       if(outbox.length&&!armed(b,`Hay ${outbox.length} cambios sin subir. Toca otra vez para salir igual`))break;
       if(sheet.open)sheet.close();
-      sb.auth.signOut().finally(()=>{LS.del(K_LAST);if(TEAM)clearTeamCache();location.hash='';location.reload()});
+      if(NATIVE)nativePost({type:'schedule',items:[]});
+      sb.auth.signOut().finally(()=>{LS.del(K_LAST);clearLocalData(true);location.hash='';location.reload()});
       break;
     case 'team-del':if(armed(b,'¿Quitar?')){sb.from('care_team').delete().match({patient_id:patientId,clinician_id:b.dataset.id}).then(({error})=>{if(error)toast('No se pudo quitar el acceso. Revisa tu conexión.');else{toast('Acceso quitado');loadTeam()}})}break;
     case 'theme-mode':case 'theme-accent':{
@@ -1690,6 +1804,10 @@ document.addEventListener('click',e=>{
       break;
     }
     case 'panel':openPanel();break;
+    case 'crash-reload':location.reload();break;
+    case 'crash-reset':if(armed(b,'Toca otra vez para borrar')){clearLocalData(false);location.reload()}break;
+    case 'rej-retry':outbox.unshift(...rejected.map(x=>x.op));rejected=[];LS.set(RJK(),rejected);LS.set(OBK(),outbox);render();flush();break;
+    case 'rej-drop':if(armed(b,'¿Descartar? Toca otra vez')){rejected=[];LS.set(RJK(),rejected);refresh();render()}break;
     case 'install':if(installEvt){const ev=installEvt;installEvt=null;ev.prompt();ev.userChoice.finally(()=>{if(sheet.open)sheet.close();safeRender()})}break;
     case 'panel-reload':panelRows=null;render();loadPanel();break;
     case 'p-open':openFromPanel(b.dataset.id);break;
@@ -1768,7 +1886,7 @@ document.addEventListener('submit',e=>{
     const name=document.getElementById('s-name').value.trim(), email=document.getElementById('s-email').value.trim(), r=document.getElementById('s-role').value, pass=document.getElementById('s-pass').value.trim();
     if(!name)return showErr('s-err','Escribe el nombre.');
     if(!/^\S+@\S+\.\S+$/.test(email))return showErr('s-err','Escribe un correo válido.');
-    if(pass.length<8)return showErr('s-err','La contraseña temporal debe tener al menos 8 caracteres.');
+    if(pass.length<10)return showErr('s-err','La contraseña temporal debe tener al menos 10 caracteres.');
     sb.rpc('admin_create_staff',{p_email:email,p_name:name,p_role:r,p_password:pass}).then(async({error})=>{
       if(error)return showErr('s-err',error.message||'No se pudo crear la cuenta.');
       const {data}=await sb.from('staff').select('*').order('created_at');staffList=data||[];sheetIn.innerHTML=staffHTML({email,pass});
@@ -1806,16 +1924,6 @@ document.addEventListener('submit',e=>{
     const pass=document.getElementById('r-pass').value;
     if(pass.length<8)return showErr('r-err','La contraseña debe tener al menos 8 caracteres.');
     sb.auth.updateUser({password:pass}).then(({error})=>{if(error)return showErr('r-err','No se pudo guardar. Pide otro correo de cambio de contraseña.');toast('Contraseña guardada');openSession()});
-  }
-  if(id==='team-form'){
-    const email=document.getElementById('t-email').value.trim();
-    if(!/^\S+@\S+\.\S+$/.test(email))return showErr('t-err','Escribe el correo de tu médico.');
-    sb.rpc('grant_access',{clinician_email:email}).then(({data,error})=>{
-      if(error)return showErr('t-err',isNetErr(error)?'Sin conexión. Inténtalo cuando tengas señal.':'No se pudo dar acceso.');
-      if(data==='not_found')return showErr('t-err','No hay ninguna cuenta con ese correo. Pídele a tu médico que primero cree su cuenta marcando "Soy médico/a".');
-      if(data==='self')return showErr('t-err','Ese es tu propio correo.');
-      toast('Listo: ahora puede ver tu cuaderno');loadTeam();
-    });
   }
   if(id==='lab-form'){
     const k=document.getElementById('l-date').value||todayKey(), vals={};
@@ -1861,24 +1969,27 @@ render();
 async function openSession(){
   const uid=session.user.id, last=LS.get(K_LAST)||{};
   if(TEAM)return openTeamSession(uid,last);
-  try{const {data,error}=await sb.from('profiles').select('role').eq('id',uid).maybeSingle();if(error)throw error;role=data?data.role:'patient'}
+  const ok=r=>{if(r.status!=='fulfilled'||r.value.error)throw (r.reason||r.value.error);return r.value.data};
+  const [rp,rs,rt]=await Promise.allSettled([sb.from('profiles').select('role').eq('id',uid).maybeSingle(),sb.from('staff').select('role,display_name,active').eq('user_id',uid).maybeSingle(),sb.from('patients').select('id').eq('id',uid).maybeSingle()]);
+  try{const data=ok(rp);role=data?data.role:'patient'}
   catch(e){role=last.uid===uid&&last.role?last.role:'patient'}
-  try{const {data,error}=await sb.from('staff').select('role,display_name,active').eq('user_id',uid).maybeSingle();if(error)throw error;staffRole=data&&data.active?data.role:null;staffName=data?data.display_name:''}
+  try{const data=ok(rs);staffRole=data&&data.active?data.role:null;staffName=data?data.display_name:''}
   catch(e){staffRole=last.uid===uid?last.staffRole||null:null}
-  try{const {data,error}=await sb.from('patients').select('id').eq('id',uid).maybeSingle();if(error)throw error;hasOwn=!!data||!staffRole}
+  let ownRow=null;
+  try{const data=ok(rt);ownRow=!!data;hasOwn=!!data||!staffRole}
   catch(e){hasOwn=last.uid===uid?last.hasOwn!==false:true}
   LS.set(K_LAST,{uid,role,staffRole,hasOwn});
   if(staffRole&&(!hasOwn||location.hash==='#panel'))return openPanel();
   if(role==='clinician'&&!staffRole){canWrite=false;if(!validTab(location.hash.slice(1)))tab='equipo';return loadClinicianPatients()}
   mode='patient';patientId=uid;canWrite=true;canEditPlan=true;
-  outbox=LS.get(OBK())||[];
+  outbox=loadOps(OBK());loadRejected();
   const cached=LS.get(CK());
-  if(cached){S={plan:cached.plan,days:cached.days||{}};phase='ready'}else phase='loading';
+  if(cached){S=fromCache(cached);phase='ready'}else phase='loading';
   render();
-  if(!staffRole){try{const {data}=await sb.from('patients').select('id').eq('id',uid).maybeSingle();if(!data)await sb.from('patients').insert({id:uid,base_date:todayKey()})}catch(e){}}
+  if(!staffRole&&ownRow===false){try{await sb.from('patients').insert({id:uid,base_date:todayKey()})}catch(e){}}
   await refresh();
   loadTeam();
-  if(pendingAction){const a=pendingAction;pendingAction=null;window.mctNativeAction(a)}
+  runPendingActions();
 }
 /* App del equipo: abre el panel al instante si la última vez era personal; confirma el rol en segundo plano. */
 async function openTeamSession(uid,last){
@@ -1894,10 +2005,9 @@ async function openTeamSession(uid,last){
   if(!fast){staffRole=sr;return openPanel()}
   if(sr!==staffRole){staffRole=sr;if(mode==='view')canEditPlan=sr==='doctor';render()}
 }
-function clearTeamCache(){
-  // En computadoras compartidas no deja copias de pacientes; los cambios sin subir sí se quedan.
-  const own=(LS.get('mct-last')||{}).uid;
-  try{Object.keys(localStorage).filter(k=>k.startsWith('mct-cache-')&&k!=='mct-cache-'+own).forEach(k=>localStorage.removeItem(k))}catch(e){}
+function clearLocalData(all){
+  // Borra las copias de pacientes guardadas en este equipo. Los cambios sin subir (cola) se conservan.
+  try{Object.keys(localStorage).filter(k=>k.startsWith('mct-cache-')||(all&&(k==='mct-doc-pid'||k.startsWith('mct-rejected-')))).forEach(k=>localStorage.removeItem(k))}catch(e){}
 }
 async function loadClinicianPatients(){
   try{
@@ -1909,20 +2019,23 @@ async function loadClinicianPatients(){
   const saved=LS.get('mct-doc-pid'), pick=patients.find(p=>p.id===saved)||(patients.length===1?patients[0]:null);
   if(pick)openPatient(pick);else{phase='pick';render()}
 }
-function openPatient(p){patientId=p.id;patientName=p.name;outbox=[];const c=LS.get(CK());S=c?{plan:c.plan,days:c.days||{}}:{plan:null,days:{}};phase=c?'ready':'loading';render();refresh()}
+function openPatient(p){patientId=p.id;patientName=p.name;outbox=[];S=fromCache(LS.get(CK()));const c=S.plan||Object.keys(S.days).length;phase=c?'ready':'loading';render();refresh()}
 async function boot(){
   applyTheme();
   if(DEMO){S=demoState();canWrite=true;phase='ready';render();return}
   if(!window.supabase||!CFG.url){phase='error';render();return}
   sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'mct-auth'}});
-  sb.auth.onAuthStateChange((ev,s)=>{if(s)session=s;if(ev==='PASSWORD_RECOVERY'){phase='reset';render()}});
+  sb.auth.onAuthStateChange((ev,s)=>{if(s)session=s;if(ev==='PASSWORD_RECOVERY'){phase='reset';render()}else if(ev==='TOKEN_REFRESHED'&&s&&phase==='auth'&&offlineLogin)setTimeout(openSession,0)});
   // Abre al instante con lo guardado en el celular; el servidor actualiza después.
   const last=LS.get(K_LAST)||{};
   if(!TEAM&&last.uid&&last.role!=='clinician'&&last.hasOwn!==false){
     patientId=last.uid;const c=LS.get(CK());
-    if(c){role='patient';canWrite=true;outbox=LS.get(OBK())||[];S={plan:c.plan,days:c.days||{}};phase='ready';render()}
+    if(c){role='patient';canWrite=true;outbox=loadOps(OBK());loadRejected();S=fromCache(c);phase='ready';render()}
   }
-  const {data}=await sb.auth.getSession();session=data.session;
+  let gs;try{gs=await sb.auth.getSession()}catch(e){gs={data:{session:null},error:e}}
+  session=gs.data&&gs.data.session;
+  // Sin señal y con la sesión vencida, la app sigue abierta con lo guardado; se renueva sola al volver internet.
+  if(!session){const st=LS.get('mct-auth');if(st&&st.user&&st.user.id&&st.refresh_token&&(gs.error||!navigator.onLine)){session=st;offlineLogin=true}}
   if(location.hash.includes('access_token')||location.hash.includes('error'))history.replaceState(null,'',location.pathname+location.search);
   if(!session){patientId=null;canWrite=false;staffRole=null;S={plan:null,days:{}};phase='auth';render();return}
   if(phase!=='reset')openSession();
@@ -1938,14 +2051,16 @@ if(TEAM){
 boot();
 
 const alerted=new Set();
-setInterval(()=>{
+window.addEventListener('error',e=>console.error('error',e.message));
+window.addEventListener('unhandledrejection',e=>console.error('promesa',e.reason));
+setInterval(()=>{try{tick()}catch(e){console.warn('tick',e)}try{syncNative()}catch(e){console.warn('sync',e)}},30000);
+function tick(){
   if(phase!=='ready')return;
   const k=todayKey(), n=nowMin();
   const dueNow=slotsFor(k).filter(s=>toMin(s.time)===n&&!isDone(s.st.k));
   if(canWrite&&dueNow.length&&!alerted.has(k+dueNow[0].time)){alerted.add(k+dueNow[0].time);toast(`Es hora: ${uniqNames(dueNow)}`)}
   if(tab==='hoy'&&!sheet.open)safeRender();
-  syncNative();
-},30000);
+}
 })();
 </script>
 </body></html>
