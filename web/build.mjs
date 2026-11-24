@@ -2,6 +2,7 @@
 // (para que funcione sin internet dentro de la app de Android) y la configuración pública.
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 const root = path.dirname(new URL(import.meta.url).pathname);
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
@@ -38,6 +39,25 @@ const teamDir = path.join(root, 'dist/equipo');
 fs.mkdirSync(teamDir, { recursive: true });
 fs.writeFileSync(path.join(teamDir, 'index.html'), team);
 for (const f of fs.readdirSync(path.join(root, 'equipo'))) fs.copyFileSync(path.join(root, 'equipo', f), path.join(teamDir, f));
+
+// Candado de seguridad (CSP) para las páginas web: solo corren los scripts de esta página (por su huella sha256)
+// y solo se conecta a Supabase. Si alguien lograra meter código en un dato, el navegador no lo ejecuta.
+// La app de Android carga la misma página sin CSP (protegida por la validación de datos) hasta probarla en el teléfono.
+function withCSP(page) {
+  const hashes = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+  const sbu = new URL(cfg.url), SB = sbu.origin, WS = 'wss://' + sbu.host;
+  const csp = [
+    "default-src 'none'", `script-src ${hashes.join(' ')}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src https://fonts.gstatic.com",
+    `img-src 'self' data: blob: ${SB}`, `media-src 'self' blob: ${SB}`, `connect-src 'self' ${SB} ${WS}`,
+    "manifest-src 'self'", "worker-src 'self'", "base-uri 'none'", "form-action 'none'", "object-src 'none'",
+  ].join('; ');
+  const out = page.replace('<meta charset="utf-8">', `<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${csp}">`);
+  if (out === page) throw new Error('No se pudo poner la CSP');
+  return out;
+}
+fs.writeFileSync(path.join(root, 'dist/index.html'), withCSP(html));
+fs.writeFileSync(path.join(teamDir, 'index.html'), withCSP(team));
 
 const appDir = path.join(root, '../app/src');
 if (fs.existsSync(appDir)) fs.writeFileSync(path.join(appDir, 'webapp.js'), `// Generado por web/build.mjs. No editar a mano.\nexport default ${JSON.stringify(html)};\n`);

@@ -166,7 +166,7 @@ export default function App() {
       const raw = MctAlarm.takePendingAction();
       if (!raw) return;
       const a = JSON.parse(raw);
-      if (a.k && a.t) deliverRef.current({ action: a.action, k: a.k, t: a.t });
+      if (a.k && a.t) deliverRef.current({ action: a.action, k: a.k, t: a.t, ts: a.ts });
     } catch (e) {
       console.warn('alarm action', e);
     }
