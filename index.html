@@ -1,5 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Fxb4dkVB1/svUfhTm6iISQxZmrrHzBBtAAtQtzf2Edo=' 'sha256-qGftvPsCk3Cu7HIj3WGAtWC2IfvjvGTGWE+wNp0be84=' 'sha256-otfifdWd3/qsB5pl+0KBwmrgpDiFxqX+KzdbBvzUWWw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://wbivucivzmudlwtbovjd.supabase.co; media-src 'self' blob: https://wbivucivzmudlwtbovjd.supabase.co; connect-src 'self' https://wbivucivzmudlwtbovjd.supabase.co wss://wbivucivzmudlwtbovjd.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Fxb4dkVB1/svUfhTm6iISQxZmrrHzBBtAAtQtzf2Edo=' 'sha256-qGftvPsCk3Cu7HIj3WGAtWC2IfvjvGTGWE+wNp0be84=' 'sha256-WGXgc06A53dKH36EKoSpL5497O9P/ymXcHkKICYTprw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://wbivucivzmudlwtbovjd.supabase.co; media-src 'self' blob: https://wbivucivzmudlwtbovjd.supabase.co; connect-src 'self' https://wbivucivzmudlwtbovjd.supabase.co wss://wbivucivzmudlwtbovjd.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -113,6 +113,11 @@ b{font-weight:700}
 .note.info svg{color:var(--accent)}
 .note.bad{background:color-mix(in srgb,var(--bad) 13%,var(--surface))}
 .note.bad svg{color:var(--bad)}
+.checks{display:grid;gap:8px}
+.dcheck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.dcheck .dot-s{width:12px;height:12px;border-radius:50%;background:var(--ok)}
+.dcheck.bad .dot-s{background:var(--bad)}.dcheck.warn .dot-s{background:var(--warn)}
+.dcheck.bad{border-color:var(--bad)}
 
 .slot{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;scroll-margin-top:96px}
 .slot-h{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;background:color-mix(in srgb,var(--b) 10%,var(--surface))}
@@ -314,11 +319,110 @@ dialog.cam::backdrop{background:#05080D}
 .dot.v{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--accent)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(82px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:20;width:max-content;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgb(0 0 0 / .2)}
 @media (max-width:360px){.kpis.k3{grid-template-columns:1fr 1fr}.kv{grid-template-columns:1fr 1fr}}
+/* ---------- Dashboard de PC (app del equipo, pantallas de 1100 px o más) ---------- */
+.side{display:none}
+html.desk .side{display:flex;flex-direction:column;gap:6px;position:fixed;left:0;top:0;bottom:0;width:248px;padding:22px 16px;background:var(--surface);border-right:1px solid var(--line);z-index:7;overflow:auto}
+html.desk .app{max-width:none!important;margin:0 0 0 248px;padding:0 32px 40px}
+html.desk .tabs{display:none}
+html.desk .top{padding-block:22px 14px}
+html.desk .top .topbtns{display:none}
+html.desk .top h1{font-size:28px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px;font:700 17px/1.1 var(--f-display)}
+.brand img{width:34px;height:34px;border-radius:10px}
+.brand small{display:block;font:600 11px/1.3 var(--f-body);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.nav{appearance:none;display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:10px;border:0;background:none;color:var(--ink);font:600 14.5px var(--f-body);cursor:pointer;text-align:left;transition:background .15s,color .15s}
+.nav:hover{background:var(--surface-2)}
+.nav[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+.nav svg{width:18px;height:18px;flex:none}
+.side .who{margin-top:auto;padding:12px;border-radius:12px;background:var(--surface-2);font-size:13px}
+.side .who b{display:block;font-size:14px}
+.side .pbox{padding:12px;border-radius:12px;border:1px solid var(--line);margin:8px 0}
+.side .pbox b{display:block;font:700 16px var(--f-display)}
+.side h4{margin:14px 10px 4px;font:700 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpis5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;display:grid;gap:4px;position:relative;overflow:hidden}
+.kpi .v{font:700 30px/1 var(--f-display)}
+.kpi .l{font-size:13px;color:var(--muted);font-weight:600}
+.kpi.bad .v{color:var(--bad)}.kpi.warn .v{color:var(--warn)}.kpi.ok .v{color:var(--ok)}
+.kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line)}
+.kpi.bad::after{background:var(--bad)}.kpi.warn::after{background:var(--warn)}.kpi.ok::after{background:var(--ok)}
+.dgrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+@media (max-width:1560px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.dcard>h2{margin:0 0 12px;font:700 17px var(--f-display);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tools{display:flex;gap:10px;align-items:center}
+.search{font:inherit;font-size:14px;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:240px}
+.ptable{width:100%;border-collapse:separate;border-spacing:0;font-size:14px}
+.ptable th{position:sticky;top:0;background:var(--surface);text-align:left;font:700 11.5px var(--f-body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ptable th button{all:unset;cursor:pointer}
+.ptable th button:focus-visible{outline:2px solid var(--accent)}
+.tbl .ptable td,.ptable td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:left}
+.tbl .ptable th{text-align:left}
+.ptable tbody tr{cursor:pointer;transition:background .15s}
+.ptable tbody tr:hover{background:var(--surface-2)}
+.ptable .pn{font-weight:700}
+.ptable .sub2{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.sevdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:var(--ok);vertical-align:middle}
+.sevdot.warn{background:var(--warn)}.sevdot.bad{background:var(--bad);box-shadow:0 0 0 0 var(--bad);animation:pulseDot 1.8s infinite}
+@keyframes pulseDot{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 55%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.bar{height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;min-width:80px}
+.bar i{display:block;height:100%;border-radius:5px;background:var(--ok);transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar i.warn{background:var(--warn)}.bar i.bad{background:var(--bad)}
+.b7{display:flex;gap:3px;align-items:flex-end;height:26px}
+.b7 i{width:7px;border-radius:2px;background:var(--ok)}
+.b7 i.warn{background:var(--warn)}.b7 i.bad{background:var(--bad)}.b7 i.na{background:var(--line);height:4px!important}
+.spark{display:block}
+.spark polyline{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.spark circle{fill:var(--accent)}
+.feed{display:grid;gap:10px}
+.feed .it{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;padding:10px;border-radius:12px;background:var(--bg);cursor:pointer}
+.feed .it:hover{background:var(--surface-2)}
+.feed .it svg{width:18px;height:18px;color:var(--warn)}
+.feed .it.bad svg{color:var(--bad)}
+.feed b{font-size:14px}
+.feed small{display:block;color:var(--muted)}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start}
+.pgrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start;margin-top:18px}
+.pgrid>section,.pgrid2>section{display:grid;gap:14px;min-width:0}
+.pgrid h3.colh,.pgrid2 h3.colh{margin:0;font:700 12px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+@media (max-width:1350px){.kpis5{grid-template-columns:repeat(3,minmax(0,1fr))}.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* App del equipo: en pantallas anchas el panel usa todo el ancho y las hojas se abren al centro */
 html.team[data-phase="panel"] .app{max-width:1180px}
 html.team .pcards{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
 @media (min-width:760px){html.team dialog.sheet{margin:auto;border-radius:22px;max-height:86vh;max-height:86dvh}html.team[data-phase="panel"] #view>.btn{display:inline-flex;width:auto;min-width:220px;margin-right:8px}}
 .install{display:grid;gap:8px}
+/* ---------- Movimiento: entradas suaves, toma marcada, hojas y avisos ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes popIn{0%{transform:scale(.6)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes ring{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes shimmer{from{background-position:-200% 0}to{background-position:200% 0}}
+.anim>*{animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+.anim>*:nth-child(2){animation-delay:.05s}.anim>*:nth-child(3){animation-delay:.1s}.anim>*:nth-child(4){animation-delay:.15s}.anim>*:nth-child(5){animation-delay:.2s}.anim>*:nth-child(n+6){animation-delay:.24s}
+.view.swap>*{animation:rise .32s cubic-bezier(.2,.8,.2,1) both}
+.view.swap>*:nth-child(2){animation-delay:.04s}.view.swap>*:nth-child(3){animation-delay:.08s}.view.swap>*:nth-child(n+4){animation-delay:.12s}
+dialog.sheet[open]{animation:sheetUp .3s cubic-bezier(.2,.8,.2,1)}
+dialog[open]::backdrop{animation:fadeIn .25s ease}
+.toast:not([hidden]){animation:toastIn .25s cubic-bezier(.2,.8,.2,1)}
+.check.popped{animation:popIn .45s cubic-bezier(.2,.8,.2,1),ring .7s ease-out}
+.check,.btn,.tab,.tog,.pcard,.card,.kpi,.dcard{transition:background-color .18s,border-color .18s,color .18s,transform .18s,box-shadow .18s}
+.btn:active,.check:active,.tog:active{transform:scale(.97)}
+.card,.dcard,.kpi,.pcard{box-shadow:0 1px 2px rgb(15 23 42 / .04),0 6px 18px -10px rgb(15 23 42 / .12)}
+.next{box-shadow:0 12px 28px -14px color-mix(in srgb,var(--accent) 70%,transparent);background-image:linear-gradient(135deg,transparent 40%,rgb(255 255 255 / .09))}
+@media (hover:hover){.pcard:hover,.kpi:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgb(15 23 42 / .05),0 14px 28px -14px rgb(15 23 42 / .22)}}
+.skel .v,.skel .l{border-radius:6px;background:linear-gradient(90deg,var(--surface-2) 25%,var(--line) 50%,var(--surface-2) 75%);background-size:200% 100%;animation:shimmer 1.3s linear infinite;color:transparent}
+/* Acabados del celular: barra y encabezado tipo vidrio, círculos de toma más grandes, pestaña activa con rebote */
+@supports (backdrop-filter:blur(1px)){
+  .tabs{background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:saturate(1.5) blur(16px);-webkit-backdrop-filter:saturate(1.5) blur(16px)}
+  html:not(.desk) .top{background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px)}
+}
+.check{width:44px;height:44px}
+.tab[aria-current="page"] svg{animation:popIn .35s cubic-bezier(.2,.8,.2,1)}
+.prog i{transition:background-color .4s ease}
+.prog i.ok,.prog i.late{animation:fadeIn .5s ease both}
+.bar i,.wbar .fill{transition:width .6s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 
@@ -865,6 +969,7 @@ function buildSchedule(){
     const w=addDays(parseKey(S.plan.labDate),-1);w.setHours(20,30,0,0);const tm=tacroMed();
     if(w.getTime()>now)items.push({id:'lab|'+S.plan.labDate,at:w.getTime(),pr:1,title:`Mañana: dosaje de tacrolimus${S.plan.labTentative?' (por confirmar)':''}`,body:`No tomes ${tm?'la dosis de las '+tm.times[0]:'la dosis de la mañana'} antes de la muestra de sangre. Lleva tus cápsulas.`,data:{lab:1},info:true});
   }
+  if(S.plan&&(S.plan.meds||[]).length){const r=addDays(today0(),HORIZON-1);r.setHours(10,30,0,0);items.push({id:'renovar|'+dkey(r),at:r.getTime(),pr:0,title:'Abre Mi Cuaderno Tx',body:'Toca para renovar tus alarmas de la próxima semana.',data:{k:'',t:''},kind:'alarm'})}
   const seen=new Set();
   return items.filter(x=>!seen.has(x.id)&&seen.add(x.id)).sort((a,b)=>(a.pr-b.pr)||(a.at-b.at)).slice(0,MAX_ITEMS).sort((a,b)=>a.at-b.at).map(({pr,...x})=>x);
 }
@@ -875,6 +980,7 @@ function syncNative(){
   const now=Date.now();if(JSON.stringify(items)===JSON.stringify(schedPrev.filter(x=>x.at>now)))return;
   schedPrev=items;
   try{window.ReactNativeWebView.postMessage(JSON.stringify({type:'schedule',items}))}catch(e){}
+  if(Date.now()-diagAsked>60000)setTimeout(askDiag,1500);
 }
 window.mctNativeAction=function(a){
   if(!a||typeof a!=='object'||!['taken','snooze','open'].includes(a.action)||!okDay(a.k)||!okHM(a.t))return;
@@ -892,6 +998,41 @@ window.mctNativeAction=function(a){
 };
 function runPendingActions(){const q=pendingActions;pendingActions=[];q.forEach(x=>{try{window.mctNativeAction(x)}catch(e){console.warn('action',e)}})}
 const nativePost=m=>{try{window.ReactNativeWebView.postMessage(JSON.stringify(m))}catch(e){}};
+
+/* ---------- revisar alarmas: permisos, batería y registro de lo que pasó (APK 1.4+) ---------- */
+let alarmDiag=null, diagAsked=0;
+const askDiag=()=>{if(NATIVE&&mode==='patient'){diagAsked=Date.now();nativePost({type:'diag'})}};
+window.mctDiag=function(p){alarmDiag=p&&typeof p==='object'?p:null;if(sheet.open&&document.getElementById('diag-box'))document.getElementById('diag-box').innerHTML=diagBody();else if(phase==='ready'&&tab==='hoy'&&!sheet.open)safeRender()};
+function diagChecks(){
+  const d=alarmDiag&&alarmDiag.diag;if(!d)return null;
+  const hasMeds=medsOn(todayKey()).length>0;
+  return [
+    {k:'exact',ok:d.exact,crit:true,t:'Alarmas exactas',why:'Sin este permiso Android puede atrasar la alarma varios minutos o juntarla con otras.'},
+    {k:'notifications',ok:d.notifications,crit:true,t:'Notificaciones',why:'Si están apagadas, la alarma no puede mostrarse.'},
+    {k:'battery',ok:d.battery,crit:true,t:'Sin restricción de batería',why:'El ahorro de batería de Samsung puede "dormir" la app y bloquear sus alarmas. Elige "Permitir" o "Sin restricciones".'},
+    {k:'fullScreen',ok:d.fullScreen,crit:false,t:'Pantalla completa',why:'Para que la pantalla se prenda con los botones Tomé y Posponer.'},
+    {k:'dnd',ok:!d.dndTotal,crit:false,t:'No Molestar',why:'En "Silencio total" ni las alarmas suenan. Usa el modo "Solo prioridad" con alarmas permitidas.'},
+    {k:'future',ok:!hasMeds||d.future>0,crit:true,t:'Alarmas programadas',why:d.future>0?`${d.future} programadas · la próxima ${fmtWhen(d.next)} · cubren hasta ${fmtWhen(d.last)}`:'No hay alarmas programadas. Abre "Hoy" para que se vuelvan a programar.',noFix:true},
+  ];
+}
+const fmtWhen=ms=>{if(!ms)return '—';const x=new Date(ms), k=dkey(x);return (k===todayKey()?'hoy':fmtShort(k))+' '+pad(x.getHours())+':'+pad(x.getMinutes())};
+function diagBody(){
+  if(!alarmDiag)return '<p class="hint">Revisando…</p>';
+  if(!alarmDiag.diag)return `<div class="note bad">${I.alert}<div><b>Instala la versión 1.4 de la app</b> para revisar las alarmas y que suenen aunque Samsung ahorre batería.<div style="margin-top:8px"><a class="btn small" href="${esc(CFG.siteUrl+'MiCuadernoTx.apk')}">Descargar app</a></div></div></div>`;
+  const ch=diagChecks(), log=Array.isArray(alarmDiag.log)?alarmDiag.log.slice(-25).reverse():[];
+  const isSam=/samsung/i.test(alarmDiag.diag.maker||'');
+  return `<div class="checks">${ch.map(c=>`<div class="dcheck ${c.ok?'ok':c.crit?'bad':'warn'}"><span class="dot-s"></span><div><b>${c.t}</b><div class="med-note">${c.ok&&c.k!=='future'?'Correcto':esc(c.why)}</div></div>${c.ok||c.noFix?'':`<button class="btn small" data-act="diag-fix" data-v="${c.k}">Arreglar</button>`}</div>`).join('')}</div>
+    ${isSam?`<div class="note info">${I.bell}<div><b>En tu Samsung, además:</b> Ajustes → Batería → Límites de uso en segundo plano → revisa que <b>Mi Cuaderno Tx</b> no esté en "Apps en suspensión" ni en "Apps en suspensión profunda". Si está, quítala.</div></div>`:''}
+    <div class="row2"><button class="btn" data-act="n-test">Probar alarma</button><button class="btn ghost" data-act="diag-refresh">Volver a revisar</button></div>
+    <h3 class="lab" style="margin-top:6px">Registro de alarmas</h3>
+    ${log.length?`<div class="ev">${log.map(e=>`<span class="when">${esc(fmtWhen(e.ts))}</span><span><b>${esc(e.ev)}</b>${e.info?' · '+esc(e.info):''}${e.at?` <small class="med-note">(programada ${esc(fmtWhen(e.at))})</small>`:''}</span>`).join('')}</div>`:'<p class="empty-s">Todavía no hay eventos.</p>'}`;
+}
+function openDiag(){openSheet(`<div class="grab"></div><div class="sheet-h"><div><div class="eyebrow">Alarmas</div><h3 id="sheet-title">Revisar alarmas</h3></div><button class="x" data-act="close" aria-label="Cerrar">${I.x}</button></div><div id="diag-box" class="stack">${diagBody()}</div>`);askDiag()}
+function diagWarnHTML(){
+  const ch=diagChecks();if(!ch)return '';
+  const bad=ch.filter(c=>c.crit&&!c.ok);if(!bad.length)return '';
+  return `<div class="note bad">${I.alert}<div><b>Tu alarma podría no sonar:</b> ${bad.map(c=>c.t.toLowerCase()).join(', ')}.<div style="margin-top:8px"><button class="btn small" data-act="diag">Revisar y arreglar</button></div></div></div>`;
+}
 
 /* ---------- verificación de tomas: versión A (foto) o B (video de 5 s), siempre en vivo ---------- */
 const verifyCfg=()=>(S.plan&&S.plan.verify)||{mode:'off',scope:'strict'};
@@ -933,11 +1074,16 @@ function askNativeCamera(){
   return new Promise(res=>{const t=setTimeout(()=>res(true),8000);window.mctCameraPermission=g=>{clearTimeout(t);res(!!g)};nativePost({type:'camera'})});
 }
 // Abre la cámara para verificar las tomas recién marcadas (list: [{med,i,time}] del día k).
-async function startVerify(k,list){
+/* Modo "al azar": en cada toma se sortea (con el generador criptográfico del celular) si se pide foto.
+   No hay patrón ni horario fijo: cada toma tiene la misma probabilidad, independiente de las anteriores. */
+const RANDOM_P=0.35;
+const coin=p=>{try{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]/4294967296<p}catch(e){return Math.random()<p}};
+async function startVerify(k,list,forced){
   list=(list||[]).filter(s=>needsVerify(s.med));
   if(!list.length||!canWrite)return;
+  if(verifyCfg().mode==='random'&&!forced&&!coin(RANDOM_P))return;
   if(cam)stopCam();
-  const mode=verifyCfg().mode;
+  const mode=verifyCfg().mode==='random'?'photo':verifyCfg().mode;
   cam={k,list,mode,names:[...new Set(list.map(s=>s.med.name))].join(', '),time:list[0].time,opened:Date.now(),stream:null,blob:null,url:null,state:'live'};
   const el=camEl();if(!el.open)el.showModal();
   renderCam();
@@ -1074,7 +1220,7 @@ async function loadPanel(){
         const al=recentAlerts(2), red=al.filter(x=>x.a[0]==='bad').length;
         let lastAt=null;Object.keys(data.days).sort().forEach(k=>Object.values(data.days[k].doses||{}).forEach(r=>{if(r.s==='taken'&&r.at){const v=k+' '+r.at;if(!lastAt||v>lastAt)lastAt=v}}));
         const sev=overdue.length||red?'bad':(st.pct!=null&&st.pct<90)||al.length?'warn':'ok';
-        return {id:p.id,name,dn:p.tx_date?daysBetween(p.tx_date,tk):null,pct:st.pct,punct:crit?Math.round(punct/crit*100):null,overdue,alerts:al,red,tac:ll.tac,crea:ll.crea,lastAt,sev};
+        return {id:p.id,name,dn:p.tx_date?daysBetween(p.tx_date,tk):null,pct:st.pct,punct:crit?Math.round(punct/crit*100):null,overdue,alerts:al,red,tac:ll.tac,crea:ll.crea,lastAt,sev,tacS:labSeries('tac').slice(-10).map(x=>x.v),creaS:labSeries('crea').slice(-10).map(x=>x.v),days7:st.days.map(d=>d.total?Math.round(d.taken/d.total*100):null),meds:medsOn(tk).length};
       });
     }).sort((a,b)=>({bad:0,warn:1,ok:2}[a.sev]-{bad:0,warn:1,ok:2}[b.sev])||((a.pct??101)-(b.pct??101)));
     panelAt=new Date();
@@ -1084,6 +1230,7 @@ async function loadPanel(){
 function viewPanel(){
   if(panelErr)return `<div class="card"><p>${esc(panelErr)}</p><button class="btn" data-act="panel-reload">Reintentar</button></div>`;
   if(!panelRows)return `<div class="card"><h2>Cargando pacientes…</h2></div>`;
+  const an=deskAnim;deskAnim=false;
   const ar=v=>v&&v.prev?(v.last.v>v.prev.v?' ↑':v.last.v<v.prev.v?' ↓':''):'';
   const cards=panelRows.map(r=>{
     const chip=r.overdue.length?`<span class="chip bad">${r.overdue.length} crítica${r.overdue.length>1?'s':''} atrasada${r.overdue.length>1?'s':''}</span>`:r.red?`<span class="chip bad">${r.red} alerta${r.red>1?'s':''}</span>`:r.alerts.length?`<span class="chip warn">${r.alerts.length} aviso${r.alerts.length>1?'s':''}</span>`:`<span class="chip ok">Al día</span>`;
@@ -1097,12 +1244,95 @@ function viewPanel(){
     </button>`;
   }).join('');
   return `<div class="sec-h"><h2>Pacientes</h2><span class="lab">${panelRows.length} · actualizado <span class="num">${panelAt?fromMin(panelAt.getHours()*60+panelAt.getMinutes()):''}</span></span></div>
-    ${panelRows.length?`<div class="pcards">${cards}</div>`:'<p class="empty-s">Todavía no hay pacientes.</p>'}
+    ${panelRows.length?`<div class="pcards${an?' anim':''}">${cards}</div>`:'<p class="empty-s">Todavía no hay pacientes.</p>'}
     <button class="btn ghost" data-act="panel-reload">Actualizar</button>
     ${TEAM&&installEvt?`<button class="btn primary" data-act="install">Instalar la app en este dispositivo</button>`:''}
     <p class="hint">Ordenados por quién necesita atención primero: tomas críticas atrasadas y alertas (fiebre, presión, síntomas de alarma), luego la adherencia más baja.</p>`;
 }
+/* ---------- dashboard de PC ---------- */
+const WIDE=matchMedia('(min-width:1100px)');
+const isDesk=()=>TEAM&&WIDE.matches&&(phase==='panel'||(phase==='ready'&&mode==='view'));
+WIDE.addEventListener('change',()=>render());
+let pq='', psort='sev', pdir=1, deskAnim=true;
+function spark(vals,w=84,h=24){
+  vals=(vals||[]).filter(v=>v!=null&&Number.isFinite(v));if(!vals.length)return '<span class="sub2">—</span>';
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=mx-mn||1,n=vals.length;
+  const pts=vals.map((v,i)=>[n===1?w/2:(i/(n-1))*(w-6)+3,h-3-((v-mn)/rg)*(h-6)]);
+  const [lx,ly]=pts[pts.length-1];
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts.map(p=>p.map(x=>x.toFixed(1)).join(',')).join(' ')}"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3"/></svg>`;
+}
+const b7=days=>`<div class="b7" aria-hidden="true">${(days||[]).map(v=>v==null?'<i class="na"></i>':`<i class="${pctCls(v)}" style="height:${Math.max(4,Math.round(v/100*26))}px"></i>`).join('')}</div>`;
+const SEVR={bad:0,warn:1,ok:2};
+function sortRows(rows){
+  const key={sev:r=>SEVR[r.sev]*1000+(r.pct??101),name:r=>r.name.toLowerCase(),dn:r=>r.dn??-1,pct:r=>r.pct??-1,punct:r=>r.punct??-1,tac:r=>r.tac.last?r.tac.last.v:-1,crea:r=>r.crea.last?r.crea.last.v:-1,last:r=>r.lastAt||''}[psort]||(r=>0);
+  return [...rows].sort((a,b)=>{const x=key(a),y=key(b);return (x<y?-1:x>y?1:0)*pdir});
+}
+function deskRowsHTML(){
+  const q=pq.trim().toLowerCase(), rows=sortRows((panelRows||[]).filter(r=>!q||r.name.toLowerCase().includes(q)));
+  if(!rows.length)return `<tr><td colspan="8" class="sub2" style="padding:24px;text-align:center">${q?'Ningún paciente coincide con la búsqueda.':'Todavía no hay pacientes.'}</td></tr>`;
+  const ar=v=>v&&v.prev?(v.last.v>v.prev.v?' ↑':v.last.v<v.prev.v?' ↓':''):'';
+  return rows.map(r=>{
+    const state=r.overdue.length?`<span class="chip bad">${r.overdue.length} crítica${r.overdue.length>1?'s':''} atrasada${r.overdue.length>1?'s':''}</span>`:r.red?`<span class="chip bad">${r.red} alerta${r.red>1?'s':''}</span>`:r.alerts.length?`<span class="chip warn">${r.alerts.length} aviso${r.alerts.length>1?'s':''}</span>`:'<span class="chip ok">Al día</span>';
+    const last=r.lastAt?(r.lastAt.slice(0,10)===todayKey()?'hoy '+r.lastAt.slice(11):fmtShort(r.lastAt.slice(0,10))+' '+r.lastAt.slice(11)):'—';
+    return `<tr data-act="p-open" data-id="${esc(r.id)}" tabindex="0">
+      <td><span class="sevdot ${r.sev}"></span><span class="pn">${esc(r.name)}</span><span class="sub2" style="margin-left:18px">${r.meds} medicamento${r.meds===1?'':'s'} hoy</span></td>
+      <td class="num">${r.dn!=null?r.dn:'—'}</td>
+      <td>${state}</td>
+      <td><div style="display:grid;gap:5px"><span class="num"><b>${r.pct??'—'}${r.pct!=null?'%':''}</b></span><div class="bar"><i class="${pctCls(r.pct)}" style="width:${r.pct??0}%"></i></div></div></td>
+      <td>${b7(r.days7)}<span class="sub2">punt. críticos ${r.punct??'—'}${r.punct!=null?'%':''}</span></td>
+      <td><b class="num">${r.tac.last?fmtNum(r.tac.last.v):'—'}</b><span class="sub2">${r.tac.last?fmtShort(r.tac.last.k):''}</span>${spark(r.tacS)}</td>
+      <td><b class="num">${r.crea.last?fmtNum(r.crea.last.v)+ar(r.crea):'—'}</b><span class="sub2">${r.crea.last?fmtShort(r.crea.last.k):''}</span>${spark(r.creaS)}</td>
+      <td class="num">${esc(last)}</td>
+    </tr>`;
+  }).join('');
+}
+function viewDesk(){
+  if(panelErr)return `<div class="dcard"><p>${esc(panelErr)}</p><button class="btn" data-act="panel-reload">Reintentar</button></div>`;
+  if(!panelRows)return `<div class="kpis5">${'<div class="kpi skel"><span class="l">&nbsp;</span><span class="v">&nbsp;</span></div>'.repeat(5)}</div><div class="dcard"><h2>Cargando pacientes…</h2></div>`;
+  const R=panelRows, n=R.length, att=R.filter(r=>r.sev==='bad').length, od=R.reduce((a,r)=>a+r.overdue.length,0);
+  const avg=f=>{const v=R.map(f).filter(x=>x!=null);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):null};
+  const ad=avg(r=>r.pct), pu=avg(r=>r.punct);
+  const th=(k,l)=>`<th><button data-act="psort" data-k="${k}" aria-sort="${psort===k?(pdir>0?'ascending':'descending'):'none'}">${l}${psort===k?(pdir>0?' ▲':' ▼'):''}</button></th>`;
+  const feed=R.flatMap(r=>r.alerts.map(x=>({r,x}))).slice(0,14);
+  const anim=deskAnim?' anim':'';deskAnim=false;
+  return `<div class="kpis5${anim}">
+      <div class="kpi"><span class="v num">${n}</span><span class="l">Pacientes en seguimiento</span></div>
+      <div class="kpi ${att?'bad':'ok'}"><span class="v num">${att}</span><span class="l">Necesitan atención</span></div>
+      <div class="kpi ${od?'bad':'ok'}"><span class="v num">${od}</span><span class="l">Tomas críticas atrasadas ahora</span></div>
+      <div class="kpi ${pctCls(ad)}"><span class="v num">${ad??'—'}${ad!=null?'%':''}</span><span class="l">Adherencia promedio · 7 días</span></div>
+      <div class="kpi ${pctCls(pu)}"><span class="v num">${pu??'—'}${pu!=null?'%':''}</span><span class="l">Puntualidad en críticos · 7 días</span></div>
+    </div>
+    <div class="dgrid${anim}">
+      <div class="dcard"><h2>Pacientes<span class="tools"><input class="search" id="psearch" type="search" placeholder="Buscar paciente…" value="${esc(pq)}" aria-label="Buscar paciente"><button class="btn small ghost" data-act="panel-reload">Actualizar</button></span></h2>
+        <div class="tbl" style="overflow:auto"><table class="ptable"><thead><tr>${th('sev','Paciente')}${th('dn','Día')}<th>Estado</th>${th('pct','Adherencia 7 d')}<th>Últimos 7 días</th>${th('tac','Tacrolimus')}${th('crea','Creatinina')}${th('last','Última toma')}</tr></thead><tbody id="prows">${deskRowsHTML()}</tbody></table></div>
+        <p class="hint" style="margin-top:12px">Actualizado <span class="num">${panelAt?fromMin(panelAt.getHours()*60+panelAt.getMinutes()):''}</span> · se actualiza solo cada 2 minutos. Por defecto, primero quien necesita atención.</p>
+      </div>
+      <div class="dcard"><h2>Alertas recientes</h2>${feed.length?`<div class="feed">${feed.map(({r,x})=>`<div class="it ${x.a[0]}" data-act="p-open" data-id="${esc(r.id)}">${I.alert}<div><b>${esc(r.name)} · ${esc(x.a[1])}</b><small>${esc(x.a[2]||'')}</small></div></div>`).join('')}</div>`:'<p class="empty-s">Sin alertas en las últimas 48 horas.</p>'}</div>
+    </div>`;
+}
+function deskPatientHTML(){
+  return `<div class="pgrid anim">
+      <section><h3 class="colh">Hoy</h3>${viewHoy()}</section>
+      <section><h3 class="colh">Análisis</h3>${viewAnalisis()}</section>
+      <section><h3 class="colh">Seguimiento</h3>${viewEquipo()}</section>
+    </div>
+    <div class="pgrid2">
+      <section><h3 class="colh">Controles</h3>${viewControles()}</section>
+      <section><h3 class="colh">Historial</h3>${viewHistorial()}</section>
+    </div>`;
+}
+function sideHTML(){
+  const RL={admin:'Admin',doctor:'Médico/a',nurse:'Licenciada'};
+  const inView=mode==='view';
+  return `<div class="brand"><img src="icon-192.png" alt=""><div>Mi Cuaderno Tx<small>Equipo de trasplante</small></div></div>
+    <button class="nav" data-act="panel"${!inView?' aria-current="page"':''}>${I.list}Pacientes</button>
+    ${inView?`<div class="pbox"><span class="sub2">Paciente abierto</span><b>${esc(patientName)}</b>${canEditPlan?`<button class="btn small primary" data-act="plan" style="margin-top:10px">${I.list} Editar plan</button>`:'<span class="sub2" style="margin-top:6px">Solo lectura</span>'}</div>`:''}
+    ${staffRole==='admin'?`<button class="nav" data-act="staff">${I.steth}Personal</button>`:''}
+    <button class="nav" data-act="acct">${I.bell}Cuenta y apariencia</button>
+    <div class="who"><b>${esc(staffName||'')}</b>${RL[staffRole]||''}</div>`;
+}
 function openPanel(){
+  deskAnim=true;
   mode='panel';phase='panel';canWrite=false;canEditPlan=false;patientName='';
   if(sheet.open)sheet.close();
   render();loadPanel();
@@ -1289,18 +1519,23 @@ function render(){
 }
 function renderMain(){
   document.documentElement.dataset.phase=phase;
+  const desk=isDesk();document.documentElement.classList.toggle('desk',desk);
+  let side=document.getElementById('side');
+  if(desk){if(!side){side=document.createElement('aside');side.id='side';side.className='side';side.setAttribute('aria-label','Menú');document.body.prepend(side)}side.innerHTML=sideHTML()}
   renderTop();renderTabs();
   if(phase==='noaccess'){view.innerHTML=viewNoAccess();return}
   if(phase==='auth'){view.innerHTML=viewAuth();return}
   if(phase==='reset'){view.innerHTML=viewReset();return}
   if(phase==='pick'){view.innerHTML=viewPick();return}
-  if(phase==='panel'){view.innerHTML=viewPanel();return}
+  if(phase==='panel'){view.innerHTML=desk?viewDesk():viewPanel();return}
   if(phase==='error'){view.innerHTML=`<div class="card"><h2>${TEAM?'No se pudo abrir el panel':'No se pudo abrir tu cuaderno'}</h2><p class="sub">Revisa tu conexión a internet e inténtalo otra vez.</p><button class="btn" data-act="retry">Reintentar</button></div>`;return}
   if(phase==='loading'&&TEAM&&!patientId){view.innerHTML=`<div class="card"><h2>Abriendo el panel</h2><p class="sub">${stale?'La conexión está tardando. Revisa tu internet.':'Cargando pacientes.'}</p></div>`;return}
   if(phase==='loading'){view.innerHTML=`<div class="card"><h2>Abriendo tu cuaderno</h2><p class="sub">${stale?'La conexión está tardando. Revisa tu internet; seguimos intentando.':'Cargando tus medicamentos, controles y análisis.'}</p></div>`;return}
   const staleNote=stale?`<div class="note">${I.alert}<div>Sin conexión con tu cuaderno. Lo que ves puede no estar actualizado.</div></div>`:'';
   const rejNote=rejected.length?`<div class="note bad">${I.alert}<div><b>${rejected.length===1?'Un cambio no se pudo guardar':rejected.length+' cambios no se pudieron guardar'}.</b> ${esc(rejected[rejected.length-1].msg||'')}<div class="row2" style="margin-top:8px"><button class="btn small" data-act="rej-retry">Reintentar</button><button class="btn small ghost" data-act="rej-drop">Descartar</button></div></div></div>`:'';
-  view.innerHTML=staleNote+rejNote+(tab==='hoy'?viewHoy():tab==='controles'?viewControles():tab==='analisis'?viewAnalisis():tab==='historial'?viewHistorial():viewEquipo());
+  if(desk){view.innerHTML=staleNote+rejNote+deskPatientHTML();drawChart();fillAudit();pendingRender=false;return}
+  const dw=tab==='hoy'&&mode==='patient'&&canWrite?diagWarnHTML():'';
+  view.innerHTML=staleNote+rejNote+dw+(tab==='hoy'?viewHoy():tab==='controles'?viewControles():tab==='analisis'?viewAnalisis():tab==='historial'?viewHistorial():viewEquipo());
   if(tab==='analisis')drawChart();
   if(tab==='equipo')fillAudit();
   pendingRender=false;
@@ -1419,8 +1654,8 @@ function viewAnalisis(){
     <p class="sub">${pts.length>1?`${prev?`Anterior: <b class="num">${fmtNum(prev.v)}</b> el ${fmtShort(prev.k)}. `:''}Primer registro: <b class="num">${fmtNum(first.v)}</b> el ${fmtShort(first.k)}.`:'Un solo resultado por ahora.'}</p>`:`<p class="sub">Aún no hay resultados de ${L[1].toLowerCase()}.</p>`;
   const rows=dayKeys().filter(k=>S.days[k].labs&&LABS.some(l=>S.days[k].labs[l[0]]!=null)).reverse()
     .map(k=>{const lb=S.days[k].labs;return `<tr><td class="l">${fmtKey(k)}</td>${LABS.map(l=>`<td class="num">${lb[l[0]]!=null?fmtNum(lb[l[0]]):'—'}</td>`).join('')}</tr>`}).join('');
-  const form=canWrite?`<form id="lab-form" class="card" novalidate>
-    <h2>Agregar resultados</h2>
+  const form=canWrite||(mode==='view'&&staffRole==='doctor')?`<form id="lab-form" class="card" novalidate>
+    <h2>Agregar resultados${mode==='view'?' del paciente':''}</h2>
     <div class="fgrid">
       <div class="field full"><label for="l-date">Fecha del análisis</label><input type="date" id="l-date" value="${todayKey()}" max="${todayKey()}"></div>
       ${LABS.map(l=>`<div class="field"><label for="l-${l[0]}">${l[1]}</label><div class="inwrap"><input id="l-${l[0]}" inputmode="decimal" autocomplete="off"><span class="u">${l[2]}</span></div></div>`).join('')}
@@ -1595,7 +1830,7 @@ function doseHTML(){
     :m.qty!=null?`<div class="fgrid"><div class="field"><label for="d-q">Cantidad (${unitWord(m.unit,2)})</label><input id="d-q" inputmode="decimal" value="${r&&r.q!=null?r.q:m.qty}"></div><label class="checkrow" style="grid-column:auto;align-self:end;padding-bottom:10px"><input type="checkbox" id="d-keep"> Nueva cantidad desde hoy</label></div>`:'';
   const vf=r&&r.verif, vbox=vf&&vf.path?`<div class="sec"><span class="lab">${vf.kind==='video'?'Video':'Foto'} de verificación · <span class="num">${vf.at}</span>${vf.up===false?' · pendiente de subir':''}</span><div class="vbox" data-vpath="${esc(vf.path)}"><p class="hint">Cargando…</p></div></div>`
     :vf&&vf.kind==='skipped'?`<span class="chip neutral" style="justify-self:start">Sin verificar</span>`:'';
-  const vnow=recorded&&st.k!=='skip'&&needsVerify(m)&&!(vf&&vf.path)?`<button class="btn" data-act="v-later">${verifyCfg().mode==='photo'?'Verificar con foto':'Verificar con video'}</button>`:'';
+  const vnow=recorded&&st.k!=='skip'&&needsVerify(m)&&!(vf&&vf.path)&&(verifyCfg().mode!=='random'||(vf&&vf.kind==='skipped'))?`<button class="btn" data-act="v-later">${verifyCfg().mode==='video'?'Verificar con video':'Verificar con foto'}</button>`:'';
   return `${head}${vbox}${vnow}${amt}<p class="err" id="d-err" hidden></p>
   <div class="stack">
     ${isToday?`<button class="btn primary" data-act="d-now">${I.check} La tomé ahora · ${nowHHMM()}</button>`:''}
@@ -1682,13 +1917,14 @@ function planHTML(){
       <li>Si no confirmas, te recuerda a los 10, 20, 30, 45 y 60 minutos.</li>
       <li>La noche antes del dosaje te recuerda no tomar tacrolimus antes de la muestra.</li>
     </ul>
+    <button class="btn primary" data-act="diag">Revisar alarmas</button>
     <div class="row2"><button class="btn" data-act="n-test">Probar alarma</button><button class="btn" data-act="n-perm">Permitir pantalla completa</button></div>
-    <p class="hint" style="color:var(--ink)">Si al probar no se prende la pantalla, toca "Permitir pantalla completa" y activa el permiso.</p>
+    <p class="hint" style="color:var(--ink)">"Revisar alarmas" comprueba los permisos y el ahorro de batería, y muestra si cada alarma sonó.</p>
   </div>`:`<div class="card soft"><h2>Avisos</h2><p class="hint" style="color:var(--ink)">En la versión web los avisos aparecen solo con la página abierta. Las alarmas que suenan con el celular bloqueado están en la app de Android.</p></div>`}
   ${mode!=='patient'?'':`<div class="sec"><h2>Verificación de tomas</h2>
-    <div class="seg" role="group" aria-label="Versión">${[['off','Desactivada'],['photo','A · Foto'],['video','B · Video']].map(([v,l])=>`<button class="tog" data-act="verify-mode" data-v="${v}" aria-pressed="${verifyCfg().mode===v}">${l}</button>`).join('')}</div>
+    <div class="seg" role="group" aria-label="Versión">${[['off','Desactivada'],['random','Al azar'],['photo','Siempre foto'],['video','Siempre video']].map(([v,l])=>`<button class="tog" data-act="verify-mode" data-v="${v}" aria-pressed="${verifyCfg().mode===v}">${l}</button>`).join('')}</div>
     ${verifyCfg().mode!=='off'?`<div class="seg" role="group" aria-label="Para qué tomas">${[['strict','Solo críticos'],['all','Todos']].map(([v,l])=>`<button class="tog" data-act="verify-scope" data-v="${v}" aria-pressed="${verifyCfg().scope===v}">${l}</button>`).join('')}</div>`:''}
-    <p class="hint">Al marcar una toma se abre la cámara frontal en vivo (no se puede elegir de la galería). La foto o el video llevan la fecha y la hora, y los puede ver tu equipo.</p>
+    <p class="hint">${verifyCfg().mode==='random'?'En algunas tomas, elegidas al azar sin ningún patrón (más o menos 1 de cada 3), se abre la cámara frontal en vivo para una foto tomando la pastilla. No se puede elegir de la galería.':'Al marcar una toma se abre la cámara frontal en vivo (no se puede elegir de la galería).'} La foto lleva la fecha y la hora, y la puede ver tu equipo.</p>
   </div>
   ${appearanceHTML()}`}
   ${session&&mode==='patient'?`<div class="sec"><h2>Cuenta</h2><p class="sub">${esc(session.user.email)}</p>${passFormHTML()}<button class="btn ghost" data-act="logout">Cerrar sesión</button></div>`:''}`;
@@ -1710,7 +1946,7 @@ function armed(b,label){
 }
 const showErr=(id,msg)=>{const el=document.getElementById(id);el.textContent=msg;el.hidden=false};
 const numIn=id=>{const el=document.getElementById(id);const raw=el?el.value.trim().replace(',','.'):'';if(!raw)return null;if(/^\d+\/\d+$/.test(raw)){const [a,b]=raw.split('/').map(Number);return b?a/b:NaN}const x=Number(raw);return Number.isFinite(x)?x:NaN};
-const setDose=(k,m,i,val)=>{saveDay(k,d=>{putRec(d,k,m,i,val)});if(val)nativePost({type:'stopAlarm'})};
+const setDose=(k,m,i,val)=>{saveDay(k,d=>{putRec(d,k,m,i,val)});if(val){nativePost({type:'stopAlarm'});requestAnimationFrame(()=>{const el=document.querySelector(`[data-act=take][data-med="${gidOf(m)}"][data-i="${i}"][data-k="${k}"]`);if(el)el.classList.add('popped')})}};
 const defAmt=(m,k)=>{const tp=taperFor(m,k);return tp?(tp.mg!=null?{mg:tp.mg,n:tp.count||null}:{}):(m.qty!=null?{q:m.qty}:{})};
 function readAmt(m,k){
   if(m.taper){
@@ -1728,6 +1964,8 @@ function readAmt(m,k){
 }
 
 /* ---------- eventos ---------- */
+document.addEventListener('input',e=>{if(e.target.id==='psearch'){pq=e.target.value;const tb=document.getElementById('prows');if(tb)tb.innerHTML=deskRowsHTML()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('tr[data-act="p-open"]'))e.target.click()});
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act, k=b.dataset.k||todayKey(), t=b.dataset.time;
@@ -1803,6 +2041,7 @@ document.addEventListener('click',e=>{
     case 'rej-retry':outbox.unshift(...rejected.map(x=>x.op));rejected=[];LS.set(RJK(),rejected);LS.set(OBK(),outbox);render();flush();break;
     case 'rej-drop':if(armed(b,'¿Descartar? Toca otra vez')){rejected=[];LS.set(RJK(),rejected);refresh();render()}break;
     case 'install':if(installEvt){const ev=installEvt;installEvt=null;ev.prompt();ev.userChoice.finally(()=>{if(sheet.open)sheet.close();safeRender()})}break;
+    case 'psort':{const k=b.dataset.k;if(psort===k)pdir=-pdir;else{psort=k;pdir=k==='name'||k==='sev'?1:-1}render();break}
     case 'panel-reload':panelRows=null;render();loadPanel();break;
     case 'p-open':openFromPanel(b.dataset.id);break;
     case 'own':backToOwn();break;
@@ -1818,13 +2057,16 @@ document.addEventListener('click',e=>{
     case 'cam-send':camSend();break;
     case 'cam-retry':if(cam){cam.blob=null;cam.url=null;cam.state='live';renderCam()}break;
     case 'cam-skip':camSkip();break;
-    case 'v-later':{const vm=versionOn(cur.id,cur.k),vk=cur.k,vi=cur.i;sheet.close();if(vm)startVerify(vk,[{med:vm,i:vi,time:vm.times[vi]}]);break}
+    case 'v-later':{const vm=versionOn(cur.id,cur.k),vk=cur.k,vi=cur.i;sheet.close();if(vm)startVerify(vk,[{med:vm,i:vi,time:vm.times[vi]}],true);break}
     case 'verify-mode':case 'verify-scope':{
       const v={...verifyCfg()};if(a==='verify-mode')v.mode=b.dataset.v;else v.scope=b.dataset.v;
       savePlan(p=>{p.verify=v});refreshPlan();break;
     }
     case 'n-test':nativePost({type:'test'});toast('En unos segundos debería sonar una alarma de prueba');break;
     case 'n-perm':nativePost({type:'settings'});break;
+    case 'diag':openDiag();break;
+    case 'diag-refresh':alarmDiag=null;document.getElementById('diag-box').innerHTML=diagBody();askDiag();break;
+    case 'diag-fix':nativePost({type:'fix',what:b.dataset.v});setTimeout(askDiag,1500);break;
     case 'p-new':planEdit='new';refreshPlan();break;
     case 'p-edit':planEdit=b.dataset.id;refreshPlan();break;
     case 'p-cancel':planEdit=null;refreshPlan();break;
@@ -1956,7 +2198,8 @@ document.addEventListener('submit',e=>{
 
 /* ---------- arranque ---------- */
 const validTab=h=>TABS.some(x=>x[0]===h)?h:null;
-window.addEventListener('hashchange',()=>{tab=validTab(location.hash.slice(1))||'hoy';render();window.scrollTo({top:0})});
+window.addEventListener('hashchange',()=>{tab=validTab(location.hash.slice(1))||'hoy';view.classList.remove('swap');render();void view.offsetWidth;view.classList.add('swap');window.scrollTo({top:0})});
+view.addEventListener('animationend',e=>{if(e.target.parentElement===view&&!e.target.nextElementSibling)view.classList.remove('swap')});
 tab=validTab(location.hash.slice(1))||'hoy';
 render();
 
@@ -2034,7 +2277,7 @@ async function boot(){
   if(!session){patientId=null;canWrite=false;staffRole=null;S={plan:null,days:{}};phase='auth';render();return}
   if(phase!=='reset')openSession();
 }
-document.addEventListener('visibilitychange',()=>{if(document.hidden)return;if(phase==='ready')refresh();else if(phase==='panel'&&panelRows)loadPanel()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;if(NATIVE&&phase==='ready')setTimeout(askDiag,800);if(phase==='ready')refresh();else if(phase==='panel'&&panelRows)loadPanel()});
 // El personal ve los datos al día: el panel y el paciente abierto se actualizan cada 2 minutos.
 setInterval(()=>{if(document.hidden)return;if(phase==='ready'&&(role==='clinician'||mode==='view'))refresh();else if(phase==='panel'&&panelRows&&!sheet.open)loadPanel()},120000);
 if(TEAM){
