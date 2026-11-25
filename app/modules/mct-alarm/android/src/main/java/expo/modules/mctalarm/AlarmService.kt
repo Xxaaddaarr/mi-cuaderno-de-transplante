@@ -12,6 +12,8 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.media.ToneGenerator
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -31,6 +33,8 @@ class AlarmService : Service() {
   companion object {
     const val ACTION_RING = "expo.modules.mctalarm.RING"
     const val CHANNEL = "mct-alarma-v1"
+    // Respaldo si el servicio no puede arrancar: la notificación misma suena por el canal de alarma.
+    const val CHANNEL_FALLBACK = "mct-alarma-respaldo-v1"
     const val NOTIF_ID = 4201
     private const val RING_MS = 120_000L
 
@@ -51,6 +55,21 @@ class AlarmService : Service() {
       nm.createNotificationChannel(ch)
     }
 
+    private fun ensureFallbackChannel(c: Context) {
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+      val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+      if (nm.getNotificationChannel(CHANNEL_FALLBACK) != null) return
+      val ch = NotificationChannel(CHANNEL_FALLBACK, "Alarma de medicamentos (respaldo)", NotificationManager.IMPORTANCE_HIGH)
+      ch.description = "Suena si la alarma principal no pudo arrancar"
+      val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM) ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+      ch.setSound(uri, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+      ch.enableVibration(true)
+      ch.vibrationPattern = longArrayOf(0, 800, 400, 800, 400, 1200)
+      ch.setBypassDnd(true)
+      ch.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+      nm.createNotificationChannel(ch)
+    }
+
     private fun activityIntent(c: Context, extras: Bundle?, action: String?, code: Int): PendingIntent {
       val i = Intent(c, AlarmActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -65,14 +84,15 @@ class AlarmService : Service() {
     }
 
     @Suppress("DEPRECATION")
-    fun buildNotification(c: Context, extras: Bundle?): Notification {
+    fun buildNotification(c: Context, extras: Bundle?, fallback: Boolean = false): Notification {
       ensureChannel(c)
+      if (fallback) ensureFallbackChannel(c)
       val title = extras?.getString("title")?.takeIf { it.isNotEmpty() } ?: "Hora de tu medicamento"
       val body = extras?.getString("body") ?: ""
       val full = activityIntent(c, extras, null, 10)
       val taken = activityIntent(c, extras, "taken", 11)
       val snooze = activityIntent(c, extras, "snooze", 12)
-      val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(c, CHANNEL) else Notification.Builder(c)
+      val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(c, if (fallback) CHANNEL_FALLBACK else CHANNEL) else Notification.Builder(c)
       b.setSmallIcon(smallIcon(c))
         .setContentTitle(title)
         .setContentText(body)
@@ -91,11 +111,12 @@ class AlarmService : Service() {
 
     fun showFallback(c: Context, intent: Intent) {
       val nm = c.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-      nm.notify(NOTIF_ID, buildNotification(c, intent.extras))
+      nm.notify(NOTIF_ID, buildNotification(c, intent.extras, true))
     }
   }
 
   private var player: MediaPlayer? = null
+  private var tone: ToneGenerator? = null
   private var vibrator: Vibrator? = null
   private var wake: PowerManager.WakeLock? = null
   private var savedVolume = -1
@@ -106,12 +127,22 @@ class AlarmService : Service() {
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val n = buildNotification(this, intent?.extras)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-    } else {
-      startForeground(NOTIF_ID, n)
+    try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+      } else {
+        startForeground(NOTIF_ID, n)
+      }
+    } catch (e: Exception) {
+      // Android no dejó pasar a primer plano: la notificación de respaldo suena sola.
+      AlarmStore.log(this, "respaldo", intent?.getStringExtra("id") ?: "", 0L, e.javaClass.simpleName)
+      (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIF_ID, buildNotification(this, intent?.extras, true))
+      stopSelf()
+      return START_NOT_STICKY
     }
     startRinging()
+    AlarmStore.log(this, if (player != null) "sonó" else if (tone != null) "sonó (pitido)" else "SIN SONIDO", intent?.getStringExtra("id") ?: "", 0L,
+      "volumen alarma " + (getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamVolume(AudioManager.STREAM_ALARM))
     handler.removeCallbacks(autoStop)
     handler.postDelayed(autoStop, RING_MS)
     return START_NOT_STICKY
@@ -136,25 +167,21 @@ class AlarmService : Service() {
       savedVolume = -1
     }
 
-    val uri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
-      ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-      ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-    try {
-      val mp = MediaPlayer()
-      mp.setAudioAttributes(
-        AudioAttributes.Builder()
-          .setUsage(AudioAttributes.USAGE_ALARM)
-          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-          .build()
-      )
-      mp.setDataSource(this, uri)
-      mp.isLooping = true
-      mp.prepare()
-      mp.start()
-      player = mp
-    } catch (e: Exception) {
-      player?.release()
-      player = null
+    // Tono de alarma del celular; si falla, el de llamada o el de notificación; si todo falla, pitidos.
+    val uris = listOfNotNull(
+      RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM),
+      RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
+      RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
+      RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    )
+    for (uri in uris) {
+      if (player != null) break
+      player = tryPlay(uri)
+    }
+    if (player == null) {
+      try {
+        tone = ToneGenerator(AudioManager.STREAM_ALARM, 100).apply { startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, RING_MS.toInt()) }
+      } catch (e: Exception) { tone = null }
     }
 
     vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
@@ -169,8 +196,30 @@ class AlarmService : Service() {
     }
   }
 
+  private fun tryPlay(uri: Uri): MediaPlayer? {
+    val mp = MediaPlayer()
+    return try {
+      mp.setAudioAttributes(
+        AudioAttributes.Builder()
+          .setUsage(AudioAttributes.USAGE_ALARM)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+          .build()
+      )
+      mp.setDataSource(this, uri)
+      mp.isLooping = true
+      mp.prepare()
+      mp.start()
+      mp
+    } catch (e: Exception) {
+      mp.release()
+      null
+    }
+  }
+
   private fun stopRinging() {
     handler.removeCallbacks(autoStop)
+    try { tone?.stopTone(); tone?.release() } catch (e: Exception) {}
+    tone = null
     try { player?.stop() } catch (e: Exception) {}
     player?.release()
     player = null

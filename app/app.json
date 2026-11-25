@@ -2,13 +2,13 @@
   "expo": {
     "name": "Mi Cuaderno Tx",
     "slug": "mi-cuaderno-tx",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.xxaaddaarr.micuadernotx",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#2443B0",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -21,7 +21,8 @@
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ],
       "runtimeVersion": {
         "policy": "appVersion"

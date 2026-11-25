@@ -249,6 +249,21 @@ export default function App() {
           .then((r) => reply(r === PermissionsAndroid.RESULTS.GRANTED))
           .catch(() => reply(false));
     }
+    else if (msg.type === 'diag') {
+      // Estado de la alarma para la pantalla "Revisar alarmas" (permisos, batería, registro)
+      let diag = null, log = '[]';
+      try {
+        if (MctAlarm && MctAlarm.diagnostics) diag = JSON.parse(MctAlarm.diagnostics());
+        if (MctAlarm && MctAlarm.getLog) log = MctAlarm.getLog();
+      } catch (e) {
+        console.warn('diag', e);
+      }
+      const payload = JSON.stringify({ native: !!MctAlarm, v: 2, diag, log: JSON.parse(log || '[]') });
+      web.current?.injectJavaScript(`window.mctDiag && window.mctDiag(${payload}); true;`);
+    } else if (msg.type === 'fix' && typeof msg.what === 'string') {
+      if (MctAlarm && MctAlarm.openSettings) MctAlarm.openSettings(msg.what);
+      else Linking.openSettings();
+    }
     else if (msg.type === 'exit') BackHandler.exitApp();
     else if (msg.type === 'theme') setTheme({ bg: typeof msg.bg === 'string' ? msg.bg : null, dark: !!msg.dark });
   }, []);
