@@ -1,5 +1,5 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HhdcJaD2ukjc0orGu+dOBwQdq1T+rPXnyQizBoehNg8=' 'sha256-Fxb4dkVB1/svUfhTm6iISQxZmrrHzBBtAAtQtzf2Edo=' 'sha256-qGftvPsCk3Cu7HIj3WGAtWC2IfvjvGTGWE+wNp0be84=' 'sha256-WGXgc06A53dKH36EKoSpL5497O9P/ymXcHkKICYTprw='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://wbivucivzmudlwtbovjd.supabase.co; media-src 'self' blob: https://wbivucivzmudlwtbovjd.supabase.co; connect-src 'self' https://wbivucivzmudlwtbovjd.supabase.co wss://wbivucivzmudlwtbovjd.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-HhdcJaD2ukjc0orGu+dOBwQdq1T+rPXnyQizBoehNg8=' 'sha256-Fxb4dkVB1/svUfhTm6iISQxZmrrHzBBtAAtQtzf2Edo=' 'sha256-qGftvPsCk3Cu7HIj3WGAtWC2IfvjvGTGWE+wNp0be84=' 'sha256-t+TASClpYs8OowKOlo42W/5kHENsaovB19Sk44C6tWs='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://wbivucivzmudlwtbovjd.supabase.co; media-src 'self' blob: https://wbivucivzmudlwtbovjd.supabase.co; connect-src 'self' https://wbivucivzmudlwtbovjd.supabase.co wss://wbivucivzmudlwtbovjd.supabase.co; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0B7A68">
@@ -119,6 +119,18 @@ b{font-weight:700}
 .note.info svg{color:var(--accent)}
 .note.bad{background:color-mix(in srgb,var(--bad) 13%,var(--surface))}
 .note.bad svg{color:var(--bad)}
+.bal2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 8px}
+.bal2>div{display:grid;gap:1px;padding:10px 12px;border-radius:12px;background:var(--surface-2)}
+.bal2 b{font-size:22px;line-height:1.15}
+.bal2 small{color:var(--muted);font-size:12px}
+.flrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+.flrow .lab{min-width:62px}
+.flform{display:flex;gap:8px;margin-top:8px}
+.flform input{flex:1;min-width:0;font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.flents{margin-top:10px}
+.flents summary{cursor:pointer;font-size:13px;color:var(--muted);font-weight:600}
+.flent{display:grid;grid-template-columns:52px 1fr auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.flent .x{width:30px;height:30px}
 .checks{display:grid;gap:8px}
 .dcheck{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
 .dcheck .dot-s{width:12px;height:12px;border-radius:50%;background:var(--ok)}
@@ -663,6 +675,31 @@ function dayAlerts(k){
   return out;
 }
 function recentAlerts(n=7){const out=[];for(let i=0;i<n;i++)out.push(...dayAlerts(dkey(addDays(today0(),-i))));return out}
+/* Balance de líquidos: el periodo va de las 7:00 de un día a las 7:00 del siguiente y se guarda con la fecha de inicio. */
+const BAL_H=7;
+const balKey=(dt=new Date())=>dkey(new Date(dt.getTime()-BAL_H*3600e3));
+const balNext=k=>dkey(addDays(parseKey(k),1));
+const balLabel=k=>`7:00 del ${fmtShort(k)} a 7:00 del ${fmtShort(balNext(k))}`;
+const fmtML=n=>Math.round(n||0).toLocaleString('es-PE')+' mL';
+const flSum=(d,kind)=>(d.fl||[]).filter(x=>x.k===kind).reduce((a,x)=>a+x.ml,0);
+function recalcFluids(d){
+  const f=d.fl||[], o=f.filter(x=>x.k==='out'), i=f.filter(x=>x.k==='in');
+  if(o.length)d.diu=o.reduce((a,x)=>a+x.ml,0);else delete d.diu;
+  if(i.length)d.agua=i.reduce((a,x)=>a+x.ml,0);else delete d.agua;
+  if(!f.length)delete d.fl;
+}
+function addFluid(kind,ml,when){
+  ml=Math.round(Number(ml));if(!(ml>=1&&ml<=5000))return toast('Escribe una cantidad entre 1 y 5000 mL');
+  const dt=when||new Date(), k=balKey(dt), t=pad(dt.getHours())+':'+pad(dt.getMinutes());
+  saveDay(k,d=>{
+    // Lo anotado antes como total del día se conserva como una anotación a las 7:00
+    if(!d.fl){d.fl=[];if(d.diu!=null)d.fl.push({id:'lg-o-'+k.replace(/-/g,''),t:'07:00',k:'out',ml:Math.round(d.diu)});if(d.agua)d.fl.push({id:'lg-i-'+k.replace(/-/g,''),t:'07:00',k:'in',ml:Math.round(d.agua)})}
+    d.fl.push({id:'f'+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36),t,k:kind,ml});
+    recalcFluids(d);
+  });
+  const d=day(k);toast(kind==='in'?`+${ml} mL de líquidos · llevas ${fmtML(d.agua)}`:`+${ml} mL de orina · llevas ${fmtML(d.diu)}`);
+}
+function lastBal(){const cur=balKey();const ks=dayKeys().filter(k=>k<cur&&(S.days[k].diu!=null||S.days[k].agua!=null));const k=ks.pop();return k?{k,diu:S.days[k].diu,agua:S.days[k].agua}:null}
 function lastWith(f){const ks=dayKeys().filter(k=>S.days[k][f]!=null);const k=ks.pop();return k?{k,v:S.days[k][f]}:null}
 function lastPA(){const ks=dayKeys();for(let j=ks.length-1;j>=0;j--){const c=(S.days[ks[j]].ctrl||[]).filter(x=>x.pas!=null);if(c.length){const x=c[c.length-1];return{k:ks[j],...x}}}return null}
 function labSeries(key){return dayKeys().filter(k=>S.days[k].labs&&S.days[k].labs[key]!=null).map(k=>({k,v:S.days[k].labs[key]}))}
@@ -723,6 +760,7 @@ function cleanDay(d){
   for(const f of ['peso','diu','agua','dren']){const x=okNum(d[f]);if(x!=null)o[f]=x}
   if(Array.isArray(d.sint)){const x=d.sint.filter(v=>typeof v==='string').map(v=>v.slice(0,80)).slice(0,20);if(x.length)o.sint=x}
   if(d.nota)o.nota=okStr(d.nota,2000);
+  if(Array.isArray(d.fl)){const f=d.fl.filter(x=>x&&typeof x==='object'&&RX_ID.test(String(x.id??''))&&okHM(x.t)&&(x.k==='in'||x.k==='out')&&Number(x.ml)>=1&&Number(x.ml)<=5000).map(x=>({id:String(x.id),t:okHM(x.t),k:x.k,ml:Math.round(Number(x.ml))}));if(f.length)o.fl=f}
   if(Array.isArray(d.ctrl)){const c=d.ctrl.filter(x=>x&&typeof x==='object'&&RX_ID.test(String(x.id??''))).map(x=>{const r={id:String(x.id)}, t=okHM(x.t), pas=okNum(x.pas), pad_=okNum(x.pad), temp=okNum(x.temp);if(t)r.t=t;if(pas!=null&&pad_!=null){r.pas=pas;r.pad=pad_}if(temp!=null)r.temp=temp;return r});if(c.length)o.ctrl=c}
   if(d.labs&&typeof d.labs==='object'){const l={};['tac','hb','urea','crea'].forEach(f=>{const x=okNum(d.labs[f]);if(x!=null)l[f]=x});if(Object.keys(l).length)o.labs=l}
   return o;
@@ -736,7 +774,7 @@ function cleanState(st){
 }
 const fromCache=c=>c?cleanState(c):{plan:null,days:{}};
 /* Cola de cambios: solo operaciones bien formadas; las que el servidor rechaza quedan apartadas y visibles, nunca se borran en silencio */
-const OPT=['patients','med_versions','doses','days','readings','labs'];
+const OPT=['patients','med_versions','doses','days','readings','labs','fluids'];
 const validOp=o=>!!o&&typeof o==='object'&&['up','upd','del'].includes(o.t)&&OPT.includes(o.table)&&(o.t==='up'||(o.match&&typeof o.match==='object'))&&(o.t==='del'||(o.row&&typeof o.row==='object'));
 const loadOps=k=>{const o=LS.get(k);return Array.isArray(o)?o.filter(validOp):[]};
 const RJK=()=>'mct-rejected-'+patientId;
@@ -748,23 +786,26 @@ let pendingReason=null;
 async function fetchAll(q){const out=[];for(let f=0;;f+=1000){const {data,error}=await q().range(f,f+999);if(error)throw error;out.push(...data);if(data.length<1000)break}return out}
 async function loadPatient(pid){
   const since=dkey(addDays(today0(),-90));
-  const [pt,mv,ds,dy,rd,lb]=await Promise.all([
+  const [pt,mv,ds,dy,rd,lb,fl]=await Promise.all([
     sb.from('patients').select('*').eq('id',pid).maybeSingle(),
     fetchAll(()=>sb.from('med_versions').select('*').eq('patient_id',pid).order('from_date')),
     fetchAll(()=>sb.from('doses').select('*').eq('patient_id',pid).gte('day',since).order('day')),
     fetchAll(()=>sb.from('days').select('*').eq('patient_id',pid).order('day')),
     fetchAll(()=>sb.from('readings').select('*').eq('patient_id',pid).order('day').order('t')),
-    fetchAll(()=>sb.from('labs').select('*').eq('patient_id',pid).order('day'))]);
+    fetchAll(()=>sb.from('labs').select('*').eq('patient_id',pid).order('day')),
+    fetchAll(()=>sb.from('fluids').select('*').eq('patient_id',pid).gte('day',since).order('day')).catch(()=>[])]);
   if(pt.error)throw pt.error;
-  return assemble(pt.data,mv,ds,dy,rd,lb);
+  return assemble(pt.data,mv,ds,dy,rd,lb,fl);
 }
-function assemble(p,mv,ds,dy,rd,lb){
+function assemble(p,mv,ds,dy,rd,lb,fl=[]){
   const plan={txDate:p&&p.tx_date||'',labDate:p&&p.lab_date||'',labTentative:!!(p&&p.lab_tentative),base:p&&p.base_date||'',verify:p&&p.verify||{mode:'off',scope:'strict'},waterGoal:p&&p.water_goal||3000,meds:mv.map(toV)};
   const days={}, D=k=>(days[k]=days[k]||{});
   ds.forEach(r=>{const d=D(r.day);d.doses=d.doses||{};const o={s:r.status};if(r.at)o.at=r.at;if(r.until)o.until=r.until;if(r.qty!=null)o.q=Number(r.qty);if(r.mg!=null)o.mg=Number(r.mg);if(r.n!=null)o.n=r.n;if(r.reason)o.reason=r.reason;if(r.nt)o.nt=true;if(r.verif)o.verif=r.verif;if(r.sched)o.sched=r.sched;d.doses[r.med_gid+'#'+r.idx]=o});
   dy.forEach(r=>{const d=D(r.day);if(r.peso!=null)d.peso=Number(r.peso);if(r.diu!=null)d.diu=r.diu;if(r.agua!=null)d.agua=r.agua;if(r.dren!=null)d.dren=r.dren;if(r.sint&&r.sint.length)d.sint=r.sint;if(r.nota)d.nota=r.nota});
   rd.forEach(r=>{const d=D(r.day);(d.ctrl=d.ctrl||[]).push({id:r.id,t:r.t,...(r.pas!=null?{pas:r.pas,pad:r.pad}:{}),...(r.temp!=null?{temp:Number(r.temp)}:{})})});
   lb.forEach(r=>{const o={};['tac','hb','urea','crea'].forEach(f=>{if(r[f]!=null)o[f]=Number(r[f])});if(Object.keys(o).length)D(r.day).labs=o});
+  fl.forEach(r=>{const d=D(r.day);(d.fl=d.fl||[]).push({id:r.id,t:r.t,k:r.kind,ml:r.ml})});
+  Object.values(days).forEach(d=>{if(d.fl)d.fl.sort((a,b)=>a.t<b.t?-1:1)});
   return cleanState({plan,days});
 }
 const intOrNull=v=>v==null||v===''||!Number.isFinite(Number(v))?null:Math.round(Number(v));
@@ -781,6 +822,9 @@ function dayOps(k,d,prev,pid){
   const cr=d.ctrl||[], pr=prev.ctrl||[];
   cr.forEach(c=>{const o=pr.find(x=>x.id===c.id);if(!o||JSON.stringify(o)!==JSON.stringify(c))ops.push({t:'up',table:'readings',row:{patient_id:pid,id:c.id,day:k,t:c.t||null,pas:intOrNull(c.pas),pad:intOrNull(c.pad),temp:c.temp??null}})});
   pr.forEach(o=>{if(!cr.some(c=>c.id===o.id))ops.push({t:'del',table:'readings',match:{patient_id:pid,id:o.id}})});
+  const cf=d.fl||[], pf=prev.fl||[];
+  cf.forEach(x=>{const o=pf.find(y=>y.id===x.id);if(!o||JSON.stringify(o)!==JSON.stringify(x))ops.push({t:'up',table:'fluids',row:{patient_id:pid,id:x.id,day:k,t:x.t,kind:x.k,ml:x.ml}})});
+  pf.forEach(o=>{if(!cf.some(x=>x.id===o.id))ops.push({t:'del',table:'fluids',match:{patient_id:pid,id:o.id}})});
   if(JSON.stringify(d.labs||{})!==JSON.stringify(prev.labs||{})){const l=d.labs||{};ops.push(Object.keys(l).length?{t:'up',table:'labs',row:{patient_id:pid,day:k,tac:l.tac??null,hb:l.hb??null,urea:l.urea??null,crea:l.crea??null}}:{t:'del',table:'labs',match:{patient_id:pid,day:k}})}
   return ops;
 }
@@ -875,20 +919,29 @@ function windowConflicts(k){
 const winLabel=m=>m.win?`Ventana: ${m.win.before||0} min antes y ${m.win.after||0} min después, sin comida ni otras pastillas`:'';
 function dailyCard(k){
   if(!canWrite&&!S.plan)return '';
-  const d=day(k), goal=(S.plan&&S.plan.waterGoal)||3000, drank=d.agua||0, pct=Math.min(100,Math.round(drank/goal*100));
+  const d=day(k), goal=(S.plan&&S.plan.waterGoal)||3000;
+  const bk=balKey(), bd=day(bk), drank=bd.agua||0, peed=bd.diu||0, pct=Math.min(100,Math.round(drank/goal*100));
+  const prevK=dkey(addDays(parseKey(bk),-1)), pd=day(prevK), ents=(bd.fl||[]).slice().reverse();
   const pa=(d.ctrl||[]).filter(c=>c.pas!=null);
   const item=(ok,label,val,field)=>`<button class="ck${ok?' done':''}" data-act="go-ctrl" data-field="${field}"${canWrite?'':' disabled'}><i>${ok?I.check:''}</i><span>${label}</span><b class="num">${val}</b></button>`;
   return `<section class="card daily" aria-label="Controles de hoy">
-    <div class="sec-h"><h2>Controles de hoy</h2><span class="lab">${[d.peso!=null,d.diu!=null,pa.length>0].filter(Boolean).length} de 3</span></div>
+    <div class="sec-h"><h2>Controles de hoy</h2><span class="lab">${[d.peso!=null,pa.length>0].filter(Boolean).length} de 2</span></div>
     <div class="cklist">
       ${item(d.peso!=null,'Peso en ayunas',d.peso!=null?fmtNum(d.peso)+' kg':'pendiente','peso')}
-      ${item(d.diu!=null,'Diuresis 24 h',d.diu!=null?d.diu+' mL':'pendiente','diu')}
       ${item(pa.length>0,'Presión (al menos 1)',pa.length?pa[pa.length-1].pas+'/'+pa[pa.length-1].pad:'pendiente','pas')}
     </div>
     <div class="water">
-      <div class="sec-h"><b>Agua</b><span class="num">${fmtL(drank)} de ${fmtL(goal)}</span></div>
+      <div class="sec-h"><b>Balance de líquidos</b><span class="lab">desde las 7:00 ${bk===todayKey()?'de hoy':'de ayer'}</span></div>
+      <div class="bal2">
+        <div><span class="lab">Tomaste</span><b class="num">${fmtML(drank)}</b><small>de ${fmtL(goal)}</small></div>
+        <div><span class="lab">Orinaste</span><b class="num">${fmtML(peed)}</b><small>${(bd.fl||[]).filter(x=>x.k==='out').length} veces</small></div>
+      </div>
       <div class="bar"><i style="width:${pct}%"></i></div>
-      ${canWrite?`<div class="wbtns"><button class="btn small" data-act="water" data-ml="250">+250 mL</button><button class="btn small" data-act="water" data-ml="500">+500 mL</button><button class="btn small ghost" data-act="water" data-ml="-250">−250</button></div>`:''}
+      ${canWrite?`<div class="flrow"><span class="lab">Líquidos</span><button class="btn small" data-act="fl-add" data-k="in" data-ml="150">+150</button><button class="btn small" data-act="fl-add" data-k="in" data-ml="250">+250</button><button class="btn small" data-act="fl-add" data-k="in" data-ml="500">+500</button><button class="btn small ghost" data-act="fl-other" data-k="in">Otro</button></div>
+      <div class="flrow"><span class="lab">Orina</span><button class="btn small" data-act="fl-add" data-k="out" data-ml="200">+200</button><button class="btn small" data-act="fl-add" data-k="out" data-ml="300">+300</button><button class="btn small" data-act="fl-add" data-k="out" data-ml="400">+400</button><button class="btn small ghost" data-act="fl-other" data-k="out">Otro</button></div>
+      <form id="fl-form" class="flform" hidden novalidate><input id="fl-ml" inputmode="numeric" placeholder="mL" aria-label="Cantidad en mL"><input type="hidden" id="fl-kind"><button class="btn small primary" type="submit">Anotar</button></form>`:''}
+      ${ents.length?`<details class="flents"><summary>${ents.length} anotacion${ents.length===1?'':'es'} desde las 7:00</summary>${ents.map(x=>`<div class="flent"><span class="num">${x.t}</span><span>${x.k==='in'?'Líquidos':'Orina'}</span><b class="num">${x.ml} mL</b>${canWrite?`<button class="x" data-act="fl-del" data-id="${esc(x.id)}" aria-label="Borrar">${I.x}</button>`:''}</div>`).join('')}</details>`:''}
+      ${pd.agua!=null||pd.diu!=null?`<p class="hint">Periodo anterior (${balLabel(prevK)}): tomaste <b class="num">${fmtML(pd.agua)}</b> · orinaste <b class="num">${fmtML(pd.diu)}</b> · balance <b class="num">${((pd.agua||0)-(pd.diu||0))>=0?'+':''}${fmtML((pd.agua||0)-(pd.diu||0))}</b>.</p>`:''}
     </div>
   </section>`;
 }
@@ -966,9 +1019,10 @@ function buildSchedule(){
   const goal=(S.plan&&S.plan.waterGoal)||3000;
   for(let d=0;d<2;d++){
     const k=dkey(addDays(today0(),d)), dd=day(k), at=(h,m=0)=>{const x=parseKey(k);x.setHours(h,m,0,0);return x.getTime()};
-    if((dd.peso==null||dd.diu==null)&&at(7)>now)items.push({id:`${k}|ctl|am`,at:at(7),pr:4,title:'Controles de la mañana',body:`${dd.peso==null?'Pésate en ayunas':''}${dd.peso==null&&dd.diu==null?' y ':''}${dd.diu==null?'anota tu diuresis de 24 h':''}.`,data:{k,ctl:1},info:true,channel:'info'});
+    const pk=dkey(addDays(parseKey(k),-1)), pv=day(pk);
+    if(at(7)>now)items.push({id:`${k}|ctl|am`,at:at(7),pr:4,title:'Cierre del balance · 7:00',body:`Balance de 7 a 7: tomaste ${fmtML(pv.agua)} y orinaste ${fmtML(pv.diu)}.${dd.peso==null?' Pésate en ayunas.':''}`,data:{k,ctl:1},info:true,channel:'info'});
     const drank=dd.agua||0;
-    if(drank<goal)for(let h=8;h<=20;h+=2){if(at(h)>now)items.push({id:`${k}|agua|${h}`,at:at(h),pr:5,title:'Toma agua',body:`Llevas ${fmtL(drank)} de ${fmtL(goal)} hoy.`,data:{k,ctl:1},info:true,channel:'info'})}
+    if(drank<goal)for(let h=8;h<=20;h+=2){if(at(h)>now)items.push({id:`${k}|agua|${h}`,at:at(h),pr:5,title:'Toma líquidos',body:`Llevas ${fmtML(drank)} de ${fmtL(goal)} desde las 7:00.`,data:{k,ctl:1},info:true,channel:'info'})}
     if(!(dd.ctrl||[]).some(c=>c.pas!=null)&&at(18)>now)items.push({id:`${k}|pa`,at:at(18),pr:4,title:'Mide tu presión',body:'Todavía no anotas tu presión de hoy.',data:{k,ctl:1},info:true,channel:'info'});
   }
   if(S.plan&&S.plan.labDate){
@@ -1618,7 +1672,7 @@ function viewHoy(){
   return `${hero}${windowCard(k)}${dailyCard(k)}${wcNote}${labNote}${upNote}${progress}<div class="stack">${groups}</div>${off.length?`<div class="offday"><span class="lab">Hoy no toca</span>${off.join('')}</div>`:''}<p class="hint">Toca el círculo para marcar una toma a la hora actual. Toca el nombre para registrar otra hora, posponer o anotar que no la tomaste.</p>`;
 }
 
-const FIELDS=[['pas','Presión alta','mmHg','120','numeric',60,260],['pad','Presión baja','mmHg','80','numeric',30,160],['temp','Temperatura','°C','36.5','decimal',34,43],['peso','Peso en ayunas','kg','73.0','decimal',25,250],['diu','Diuresis 24 h','mL','2500','numeric',0,12000],['agua','Agua tomada (se suma)','mL','500','numeric',0,6000]];
+const FIELDS=[['pas','Presión alta','mmHg','120','numeric',60,260],['pad','Presión baja','mmHg','80','numeric',30,160],['temp','Temperatura','°C','36.5','decimal',34,43],['peso','Peso en ayunas','kg','73.0','decimal',25,250],['diu','Orina (esta vez)','mL','300','numeric',1,5000],['agua','Líquidos (esta vez)','mL','250','numeric',1,5000]];
 function viewControles(){
   const k=todayKey(), d=day(k);
   const f=flash;flash=null;
@@ -1628,8 +1682,8 @@ function viewControles(){
     <dl class="kv" style="margin:0">
       <div><dt>Presión</dt><dd>${pa.length?pa.map(c=>`${c.pas}/${c.pad}${c.t?` <small>${c.t}</small>`:''}`).join('<br>'):'—'}</dd></div>
       <div><dt>Peso</dt><dd>${d.peso!=null?fmtNum(d.peso)+' <small>kg</small>':'—'}</dd></div>
-      <div><dt>Diuresis 24 h</dt><dd>${d.diu!=null?d.diu+' <small>mL</small>':'—'}</dd></div>
-      <div><dt>Agua</dt><dd>${fmtL(d.agua||0)} <small>de ${fmtL((S.plan&&S.plan.waterGoal)||3000)}</small></dd></div>
+      <div><dt>Orina desde las 7:00</dt><dd>${fmtML(day(balKey()).diu)}</dd></div>
+      <div><dt>Líquidos desde las 7:00</dt><dd>${fmtML(day(balKey()).agua)} <small>de ${fmtL((S.plan&&S.plan.waterGoal)||3000)}</small></dd></div>
       ${temps.length?`<div><dt>Temperatura</dt><dd>${temps.map(c=>fmtNum(c.temp)+' <small>°C</small>').join('<br>')}</dd></div>`:''}
       ${d.dren!=null?`<div><dt>Drenaje</dt><dd>${d.dren} <small>mL</small></dd></div>`:''}
     </dl>
@@ -1754,13 +1808,13 @@ function viewHistorial(){
     ${canWrite?'<p class="hint">Toca un punto para corregir esa toma.</p>':''}
   </div>
   <div class="sec"><h2>Controles por día</h2>
-    ${vrows?`<div class="tbl"><table><thead><tr><th class="l">Día</th><th>Presión</th><th>Peso kg</th><th>Diuresis mL</th><th>Agua mL</th><th>Drenaje mL</th></tr></thead><tbody>${vrows}</tbody></table></div><p class="hint">Presión: la primera del día, o la más alta si alguna pasó el rango de alerta.</p>`:'<p class="empty-s">Sin controles todavía.</p>'}
+    ${vrows?`<div class="tbl"><table><thead><tr><th class="l">Día</th><th>Presión</th><th>Peso kg</th><th>Orina 7-7 mL</th><th>Líquidos 7-7 mL</th><th>Drenaje mL</th></tr></thead><tbody>${vrows}</tbody></table></div><p class="hint">Presión: la primera del día, o la más alta si alguna pasó el rango de alerta.</p>`:'<p class="empty-s">Sin controles todavía.</p>'}
   </div>`;
 }
 
 function latestLabs(){const o={};LABS.forEach(l=>{const s=labSeries(l[0]);o[l[0]]={last:s[s.length-1],prev:s[s.length-2]}});return o}
 function summaryText(){
-  const st=stats(7), al=recentAlerts(7), pa=lastPA(), pw=lastWith('peso'), dw=lastWith('diu'), ll=latestLabs();
+  const st=stats(7), al=recentAlerts(7), pa=lastPA(), pw=lastWith('peso'), dw=lastBal(), ll=latestLabs();
   const L=[];
   L.push(`Mi Cuaderno Tx · Resumen ${fmtDate(new Date())} ${nowHHMM()}`);
   if(S.plan&&S.plan.txDate)L.push(`Trasplante renal · Día ${daysBetween(S.plan.txDate,todayKey())}`);
@@ -1774,7 +1828,7 @@ function summaryText(){
   const c=[];
   if(pa)c.push(`PA ${pa.pas}/${pa.pad} (${fmtShort(pa.k)})`);
   if(pw)c.push(`Peso ${fmtNum(pw.v)} kg (${fmtShort(pw.k)})`);
-  if(dw)c.push(`Diuresis ${dw.v} mL (${fmtShort(dw.k)})`);
+  if(dw)c.push(`Balance 7 a 7 del ${fmtShort(dw.k)}: orina ${dw.diu??'—'} mL, líquidos ${dw.agua!=null?fmtML(dw.agua):'—'}`);
   if(c.length)L.push(`Controles: ${c.join(' · ')}`);
   if(al.length){L.push('Alertas:');al.forEach(x=>L.push(`- ${fmtKey(x.k)}${x.t?' '+x.t:''} ${x.a[1]}`))}
   const tp=medsOn(todayKey()).find(m=>m.taper);if(tp)L.push(`${tp.name}: ${taperNote(tp,todayKey())}`);
@@ -1784,7 +1838,7 @@ function summaryText(){
   return L.join('\n');
 }
 function viewEquipo(){
-  const st=stats(7), al=recentAlerts(7), ll=latestLabs(), pa=lastPA(), pw=lastWith('peso'), dw=lastWith('diu');
+  const st=stats(7), al=recentAlerts(7), ll=latestLabs(), pa=lastPA(), pw=lastWith('peso'), dw=lastBal();
   const dn=S.plan&&S.plan.txDate?daysBetween(S.plan.txDate,todayKey()):null;
   const devCls=st.dev==null?'':st.dev<=15?'ok':st.dev<=30?'warn':'bad';
   const nt=[...st.miss.map(s=>({...s,why:'Sin registro'})),...st.skip.map(s=>({...s,why:s.st.reason}))].sort((a,b)=>(a.k+a.time)<(b.k+b.time)?1:-1);
@@ -1811,7 +1865,8 @@ function viewEquipo(){
     <div class="sec"><h2>Controles</h2><dl class="kv" style="margin:0">
       <div><dt>Presión</dt><dd>${pa?`${pa.pas}/${pa.pad} <small>${fmtShort(pa.k)}</small>`:'—'}</dd></div>
       <div><dt>Peso</dt><dd>${pw?`${fmtNum(pw.v)} <small>kg · ${fmtShort(pw.k)}</small>`:'—'}</dd></div>
-      <div><dt>Diuresis 24 h</dt><dd>${dw?`${dw.v} <small>mL · ${fmtShort(dw.k)}</small>`:'—'}</dd></div>
+      <div><dt>Orina 7 a 7</dt><dd>${dw&&dw.diu!=null?`${dw.diu} <small>mL · ${fmtShort(dw.k)}</small>`:'—'}</dd></div>
+      <div><dt>Líquidos 7 a 7</dt><dd>${dw&&dw.agua!=null?`${fmtML(dw.agua)} <small>· ${fmtShort(dw.k)}</small>`:'—'}</dd></div>
     </dl></div>
     ${tpm?`<div class="note info">${I.pill}<div><b>${esc(tpm.name)}:</b> ${esc(taperNote(tpm,todayKey()))}.</div></div>`:''}
     <div class="sec"><h2>Cambios de tratamiento</h2>${chl.length?`<div class="ev">${chl.slice(0,12).map(c=>`<span class="when">${fmtKey(c.k)}</span><span>${esc(c.text)}</span>`).join('')}</div>`:'<p class="empty-s">Sin cambios desde que empezó a usar la app.</p>'}</div>
@@ -1899,7 +1954,7 @@ function planHTML(){
   <div class="fgrid">
     <div class="field"><label for="p-tx">Fecha del trasplante</label><input type="date" id="p-tx" value="${p.txDate||''}"></div>
     <div class="field"><label for="p-lab">Próximo dosaje de tacrolimus</label><input type="date" id="p-lab" value="${p.labDate||''}"></div>
-    <div class="field"><label for="p-water">Meta de agua al día (L)</label><input id="p-water" inputmode="decimal" value="${fmtNum((p.waterGoal||3000)/1000)}"></div>
+    <div class="field"><label for="p-water">Meta de líquidos al día (L)</label><input id="p-water" inputmode="decimal" value="${fmtNum((p.waterGoal||3000)/1000)}"></div>
     <label class="checkrow"><input type="checkbox" id="p-labt"${p.labTentative?' checked':''}> La fecha del dosaje está por confirmar</label>
   </div>
   <div class="sec"><div class="sec-h"><h2>Medicamentos</h2><span class="lab">${medsOn(k).length} activos</span></div>
@@ -2053,11 +2108,9 @@ document.addEventListener('click',e=>{
     case 'own':backToOwn();break;
     case 'staff':openStaff();break;
     case 'staff-toggle':sb.rpc('admin_set_staff_active',{p_user:b.dataset.id,p_active:b.dataset.on==='1'}).then(({error})=>{if(error)toast(error.message||'No se pudo');else openStaff()});break;
-    case 'water':{
-      const ml=Number(b.dataset.ml)||0, tk=todayKey();
-      saveDay(tk,d=>{d.agua=Math.max(0,(d.agua||0)+ml)});
-      toast(ml>0?`+${ml} mL · llevas ${fmtL(day(tk).agua||0)}`:`Llevas ${fmtL(day(tk).agua||0)}`);break;
-    }
+    case 'fl-add':if(canWrite)addFluid(b.dataset.k,b.dataset.ml);break;
+    case 'fl-other':{const f=document.getElementById('fl-form');if(f){f.hidden=false;document.getElementById('fl-kind').value=b.dataset.k;const i=document.getElementById('fl-ml');i.placeholder=b.dataset.k==='in'?'mL de líquidos':'mL de orina';i.value='';i.focus()}break}
+    case 'fl-del':if(armed(b,'¿Borrar?')){const id=b.dataset.id, bk=Object.keys(S.days).find(k=>(S.days[k].fl||[]).some(x=>x.id===id));if(bk){saveDay(bk,d=>{d.fl=(d.fl||[]).filter(x=>x.id!==id);recalcFluids(d)});toast('Anotación borrada')}}break;
     case 'go-ctrl':{location.hash='controles';setTimeout(()=>{const f=document.getElementById('v-'+b.dataset.field);if(f){f.focus();f.scrollIntoView({block:'center'})}},80);break}
     case 'cam-shot':camShot();break;
     case 'cam-send':camSend();break;
@@ -2103,6 +2156,7 @@ document.addEventListener('change',e=>{
 document.addEventListener('submit',e=>{
   e.preventDefault();
   const id=e.target.id;
+  if(id==='fl-form'){const ml=numIn('fl-ml'), kind=document.getElementById('fl-kind').value;if(ml==null||Number.isNaN(ml))return toast('Escribe la cantidad en mL');addFluid(kind==='out'?'out':'in',ml);return}
   if(id==='vit-form'){
     const k=document.getElementById('v-date').value||todayKey(), hora=document.getElementById('v-hora').value||null;
     const v={};
@@ -2115,11 +2169,10 @@ document.addEventListener('submit',e=>{
     saveDay(k,d=>{
       if(reading)d.ctrl=[...(d.ctrl||[]),reading];
       if(v.peso!=null)d.peso=v.peso;
-      if(v.diu!=null)d.diu=v.diu;
-      if(v.agua!=null)d.agua=(d.agua||0)+v.agua;
       if(sint.length)d.sint=[...new Set([...(d.sint||[]),...sint])];
       if(nota)d.nota=d.nota?d.nota+' · '+nota:nota;
     });
+    if(v.diu!=null||v.agua!=null){const when=parseKey(k);const [hh,mm]=(hora||nowHHMM()).split(':').map(Number);when.setHours(hh,mm,0,0);if(v.agua!=null)addFluid('in',v.agua,when);if(v.diu!=null)addFluid('out',v.diu,when)}
     const al=reading?readingAlerts(reading):[];
     if(sint.some(s=>RED_SYMPTOMS.includes(s)))al.push(['bad',sint.filter(s=>RED_SYMPTOMS.includes(s)).join(', '),'Síntoma de alarma: comunícate con tu unidad.']);
     flash={alerts:al,at:(k===todayKey()?'':fmtShort(k)+' ')+(hora||nowHHMM())};render();window.scrollTo({top:0});
